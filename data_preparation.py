@@ -5,6 +5,7 @@ import os
 
 from utils import do_plot
 
+# TODO all events must start with some data prior to observations
 
 class DATA(object):
     """
@@ -24,29 +25,30 @@ class DATA(object):
     plot_input: plots all the input and output data.
     """
 
-    def __init__(self):
+    def __init__(self, freq='30min', verbosity=1):
 
-        self.file = 'data/Total_dataset_JJ.xlsx'
+        self.freq = freq
+        self.data_dir = os.path.join(os.getcwd(), 'data')
+        self.verbosity = verbosity
         self.df = self.get_df()
         self.set_attrs()
 
 
-
-#f = 'Total_dataset_JJ.xlsx'
-
     def get_df(self):
         # 20180601 - 201909-30, (5856,3)
-        wat_df = pd.read_csv('data/wat_data_30min.txt')
+        f = os.path.join(self.data_dir, 'wat_data_30min.txt')
+        wat_df = pd.read_csv(f)
         wat_df.index = pd.to_datetime(wat_df['Date_Time'])
         if 'Date_Time' in wat_df.columns: wat_df.pop('Date_Time')
 
         # 201806 - 20190906,  (1176, 8)
-        env_df = pd.read_csv('data/env_data_30min.txt')
+        f = os.path.join(self.data_dir, 'env_data_30min.txt')
+        env_df = pd.read_csv(f)
         env_df.index = pd.to_datetime(env_df['Date_Time'])
         if 'Date_Time' in env_df.columns: env_df.pop('Date_Time')
 
         # (295, 12)
-        obs_df = load_obs_data(sheets=['201806', '201905', '201908_1', '201908_2'])
+        obs_df = self.load_obs_data(sheets=['201806', '201905', '201908_1', '201908_2'])
 
         df = pd.concat([wat_df, env_df, obs_df],
                        axis=1, join_axes=[env_df.index])
@@ -54,10 +56,6 @@ class DATA(object):
         return df
 
     def set_attrs(self):
-
-        # self.df.columns = ['pcp1', 'pcp3', 'pcp6', 'pcp12', 'tide', 'W_temp', 'sal', 'wind_sp', 'wind_dir', 'atm_temp', 'atm_p',
-        #               'ecoli', '16s', 'inti1', 'Total_args', 'tetx', 'sul1', 'blaTEM', 'aac', 'Total_otus', 'otu_5575',
-        #               'otu_273', 'otu_94']
 
         self.otus = [otu for otu in self.df.columns if 'otu' in otu]
 
@@ -94,128 +92,142 @@ class DATA(object):
 
 
 
-def load_obs_data(desired_output = None, sheets=None):
-    """ gwangali site data at 1 hour frequency, contains all data, input and output ts"""
-    if desired_output is None:
-        desired_output = ['ecoli', '16s', 'inti1', 'Total_args',
-               'tetx', 'sul1', 'blaTEM', 'aac', 'Total_otus', 'otu_5575',
-                  'otu_273', 'otu_94']
-    columns = ['pcp1', 'pcp3', 'pcp6', 'pcp12', 'tide', 'W_temp', 'sal', 'wind_sp',
-               'wind_dir', 'atm_temp', 'atm_p', 'mslp_hpa', 'rel_hum',  'ecoli', '16s', 'inti1', 'Total_args',
-               'tetx', 'sul1', 'blaTEM', 'aac', 'Total_otus', 'otu_5575',
-                  'otu_273', 'otu_94']
+    def load_obs_data(self, desired_output = None, sheets=None):
+        """ gwangali site data at 1 hour frequency, contains all data, input and output ts"""
+        if desired_output is None:
+            desired_output = ['ecoli', '16s', 'inti1', 'Total_args',
+                   'tetx_coppml', 'sul1_coppml', 'blaTEM_coppml', 'aac_coppml', 'Total_otus', 'otu_5575',
+                      'otu_273', 'otu_94']
+        columns = ['pcp1', 'pcp3', 'pcp6', 'pcp12', 'tide', 'W_temp', 'sal', 'wind_sp',
+                   'wind_dir', 'atm_temp', 'atm_p', 'mslp_hpa', 'rel_hum',  'ecoli', '16s', 'inti1', 'Total_args',
+                   'tetx_coppml', 'sul1_coppml', 'blaTEM_coppml', 'aac_coppml', 'Total_otus', 'otu_5575',
+                      'otu_273', 'otu_94']
 
-    if sheets is None:
-        sheets = ['201806', '201905', '201908_1', '201908_2'#, '201909'
-              ]
-    f = os.path.join(os.getcwd(), 'data\\Time_series_data.xlsx')
-    haupt_df = pd.DataFrame()
+        if sheets is None:
+            sheets = ['201806', '201905', '201908_1', '201908_2'#, '201909'
+                  ]
 
-    for sheet in sheets:
-        df = pd.read_excel(f, sheet_name=sheet)
-        date = df['date'].astype(str)
-        time = df['time'].astype(str)
-        idx1 = date + ' ' + time
-        if sheet == '201909':
-            yearfirst = True
-            dayfirst = False
-        else:
-            yearfirst = False
-            dayfirst = True
-        idx = pd.to_datetime(idx1, yearfirst=yearfirst, dayfirst=dayfirst)
-        df.index = idx
-        if not isinstance(df.index, pd.DatetimeIndex): raise TypeError
-        df.index.freq = pd.infer_freq(df.index)
-        if 'date' in df.columns: df.pop('date')
-        if 'time' in df.columns: df.pop('time')
-        if 'Sample No.' in df.columns: df.pop('Sample No.')
-        df.columns = columns
+        f = os.path.join(self.data_dir, 'Time_series_data.xlsx')
+        haupt_df = pd.DataFrame()
 
-        haupt_df = pd.concat([haupt_df, df])
-    return haupt_df[desired_output]
-
-
-
-def busan_data(desired_output=None, freq='30min', verbosity=0):
-    """1 minute data at a site 10 km away from Gwangali"""
-    if desired_output is None:
-        desired_output = ['tide_cm', 'wat_temp_c', 'sal_psu']
-    _d_dir = os.path.join(os.getcwd(), 'data\\busan')
-    _files = [f for f in os.listdir(_d_dir) if f.endswith('txt')]
-    haupt_df = pd.DataFrame()
-    for f in _files:
-        _f = os.path.join(_d_dir, f)
-        _df = pd.read_csv(_f, comment='#', sep='\t', na_values='-')
-        idx = pd.to_datetime(_df['Date_Time'])
-        _df.index = idx
-        _df.index.freq = pd.infer_freq(_df.index)
-        if not isinstance(_df.index, pd.DatetimeIndex): raise ValueError
-        if not isinstance(_df.index.freqstr, str): raise ValueError
-        if verbosity>0: print(_f, _df.index.freq)
-
-        ts = pd.DataFrame()
-        for col in desired_output: #_df.columns:
-            to_resample = pd.DataFrame(_df[col])
-            _ts = down_sample(to_resample, col, freq, idx=None, verbosity=verbosity)
-            ts = pd.concat([ts, _ts], axis=1,sort=False)
-
-        haupt_df = pd.concat([haupt_df, ts])
-
-    return haupt_df[desired_output]
-
-
-def load_1min_gwangali(desired_output=None, freq='30min', verbosity=1):
-    """ loads 1 minute data from a site located 10 km from Gwangali.
-    The data is from two sites. For each data, the number of nans are comapred and data from that site is accepted
-    which contains lower number of nans."""
-    if desired_output is None:
-        desired_output = ['air_temp_c', 'pcp_mm', 'wind_dir_deg', 'wind_speed_mps',
-                          'air_p_hpa', 'mslp_hpa', 'rel_hum']
-    cols = ["Point_No", "Point", "Date_Time",
-            "air_temp_c", "pcp_mm", "wind_dir_deg", "wind_speed_mps",
-            "air_p_hpa","mslp_hpa","rel_hum"]
-
-    d_dir = os.path.join(os.getcwd(), 'data\\AWS_data')
-    files = [f for f in os.listdir(d_dir) if f.endswith('txt')]
-    Haupt_df = pd.DataFrame()
-
-    for _f in files:
-        f = os.path.join(d_dir, _f)
-        file_df = pd.read_csv(f, sep='\t')
-
-
-        col_df = pd.DataFrame()
-        for col in cols:  # for each columns in file
-            col_df1 = pd.DataFrame()
-            col_df2 = pd.DataFrame()
-            for site in ['1', '2']:  # each file contains samples from two sites whose columns have suffix 1 and 2
-                _idx = file_df['Date_Time' + site]
-                _col = col + site
-                _df1 = pd.DataFrame(file_df[_col])
-                _df1 = assign_freq(_df1, _idx, _f+' ' + col, force_freq='1min', verbosity=verbosity-1, print_only=False)
-                if site == '1':
-                    col_df1 = pd.concat([col_df1, _df1], axis=1, sort=False)
-                else:
-                    col_df2 = pd.concat([col_df2, _df1], axis=1, sort=False)
-            nans_1 = int(col_df1.isna().sum())
-            nans_2 = int(col_df2.isna().sum())
-            if nans_1 > nans_2:
-                col_df2.columns = [col]
-                col_df = pd.concat([col_df, col_df2], axis=1, sort=False)
-                if verbosity>1:    print('for {}, {} is chosen which had {} nans while {} had {} nans'.format(col, 2, nans_2, 1, nans_1))
+        for sheet in sheets:
+            df = pd.read_excel(f, sheet_name=sheet)
+            date = df['date'].astype(str)
+            time = df['time'].astype(str)
+            idx1 = date + ' ' + time
+            if sheet == '201909':
+                yearfirst = True
+                dayfirst = False
             else:
-                col_df1.columns = [col]
-                col_df1 = assign_freq(col_df1, _idx, _f + ' ' + col, force_freq='1min', verbosity=verbosity-1)
-                col_df = pd.concat([col_df, col_df1], axis=1, sort=False)
-                if verbosity>1:    print('for {}, {} is chosen which had {} nans while {} had {} nans'.format(col, 1, nans_1, 2, nans_2))
+                yearfirst = False
+                dayfirst = True
+            idx = pd.to_datetime(idx1, yearfirst=yearfirst, dayfirst=dayfirst)
+            df.index = idx
+            if not isinstance(df.index, pd.DatetimeIndex): raise TypeError
+            df.index.freq = pd.infer_freq(df.index)
+            if 'date' in df.columns: df.pop('date')
+            if 'time' in df.columns: df.pop('time')
+            if 'Sample No.' in df.columns: df.pop('Sample No.')
+            df.columns = columns
 
-            col_df = down_sample(col_df, col, freq, _idx, verbosity)
+            haupt_df = pd.concat([haupt_df, df])
+        return haupt_df[desired_output]
 
-        col_df = assign_freq(col_df, file = _f, force_freq=None, verbosity=verbosity, print_only=True)
 
-        Haupt_df = pd.concat([Haupt_df, col_df])
+    def load_wat_data(self, desired_output=None):
+        """1 minute data at a site 10 km away from Gwangali"""
 
-    return Haupt_df[desired_output]
+        desired_file = os.path.join(self.data_dir, 'wat_data_' + self.freq + 'txt')
+        if os.path.exists(desired_file):
+            return pd.read_excel(desired_file)
+        else:
+            if desired_output is None:
+                desired_output = ['tide_cm', 'wat_temp_c', 'sal_psu']
+
+            _d_dir = os.path.join(os.getcwd(), 'data\\busan')
+            _files = [f for f in os.listdir(_d_dir) if f.endswith('txt')]
+            haupt_df = pd.DataFrame()
+            for f in _files:
+                _f = os.path.join(_d_dir, f)
+                _df = pd.read_csv(_f, comment='#', sep='\t', na_values='-')
+                idx = pd.to_datetime(_df['Date_Time'])
+                _df.index = idx
+                _df.index.freq = pd.infer_freq(_df.index)
+                if not isinstance(_df.index, pd.DatetimeIndex): raise ValueError
+                if not isinstance(_df.index.freqstr, str): raise ValueError
+                if self.verbosity>0: print(_f, _df.index.freq)
+
+                ts = pd.DataFrame()
+                for col in desired_output: #_df.columns:
+                    to_resample = pd.DataFrame(_df[col])
+                    _ts = down_sample(to_resample, col, self.freq, idx=None, verbosity=self.verbosity)
+                    ts = pd.concat([ts, _ts], axis=1,sort=False)
+
+                haupt_df = pd.concat([haupt_df, ts])
+            final_df = haupt_df[desired_output]
+            final_df.to_excel(os.path.join(self.data_dir), 'wat_data_' + self.freq + 'txt')
+            return final_df
+
+
+    def load_env_data(self, desired_output=None):
+        """ loads 1 minute data from a site located 10 km from Gwangali.
+        The data is from two sites. For each data, the number of nans are comapred and data from that site is accepted
+        which contains lower number of nans."""
+
+        desired_file = os.path.join(self.data_dir, 'env_data_' + self.freq + 'txt')
+        if os.path.exists(desired_file):
+            return pd.read_excel(desired_file)
+        else:
+            if desired_output is None:
+                desired_output = ['air_temp_c', 'pcp_mm', 'wind_dir_deg', 'wind_speed_mps',
+                                  'air_p_hpa', 'mslp_hpa', 'rel_hum']
+            cols = ["Point_No", "Point", "Date_Time",
+                    "air_temp_c", "pcp_mm", "wind_dir_deg", "wind_speed_mps",
+                    "air_p_hpa","mslp_hpa","rel_hum"]
+
+            d_dir = os.path.join(self.data_dir, 'AWS_data')
+            files = [f for f in os.listdir(d_dir) if f.endswith('txt')]
+            Haupt_df = pd.DataFrame()
+
+            for _f in files:
+                f = os.path.join(d_dir, _f)
+                file_df = pd.read_csv(f, sep='\t')
+
+
+                col_df = pd.DataFrame()
+                for col in cols:  # for each columns in file
+                    col_df1 = pd.DataFrame()
+                    col_df2 = pd.DataFrame()
+                    for site in ['1', '2']:  # each file contains samples from two sites whose columns have suffix 1 and 2
+                        _idx = file_df['Date_Time' + site]
+                        _col = col + site
+                        _df1 = pd.DataFrame(file_df[_col])
+                        _df1 = assign_freq(_df1, _idx, _f+' ' + col, force_freq='1min', verbosity=self.verbosity-1, print_only=False)
+                        if site == '1':
+                            col_df1 = pd.concat([col_df1, _df1], axis=1, sort=False)
+                        else:
+                            col_df2 = pd.concat([col_df2, _df1], axis=1, sort=False)
+                    nans_1 = int(col_df1.isna().sum())
+                    nans_2 = int(col_df2.isna().sum())
+                    if nans_1 > nans_2:
+                        col_df2.columns = [col]
+                        col_df = pd.concat([col_df, col_df2], axis=1, sort=False)
+                        if self.verbosity>1:    print('for {}, {} is chosen which had {} nans while {} had {} nans'.format(col, 2, nans_2, 1, nans_1))
+                    else:
+                        col_df1.columns = [col]
+                        col_df1 = assign_freq(col_df1, _idx, _f + ' ' + col, force_freq='1min', verbosity=self.verbosity-1)
+                        col_df = pd.concat([col_df, col_df1], axis=1, sort=False)
+                        if self.verbosity>1:    print('for {}, {} is chosen which had {} nans while {} had {} nans'.format(col, 1, nans_1, 2, nans_2))
+
+                    col_df = down_sample(col_df, col, self.freq, _idx, self.verbosity)
+
+                col_df = assign_freq(col_df, file = _f, force_freq=None, verbosity=self.verbosity, print_only=True)
+
+                Haupt_df = pd.concat([Haupt_df, col_df])
+
+            final_df = Haupt_df[desired_output]
+            final_df.to_excel(os.path.join(self.data_dir), 'env_data_' + self.freq + 'txt')
+            return final_df
 
 
 def assign_freq(df, index=None, file=None, force_freq=None,  verbosity=1, print_only = False):

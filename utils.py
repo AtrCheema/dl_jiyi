@@ -1,6 +1,9 @@
 
+import os
 import numpy as np
 import random
+import datetime
+from copy import deepcopy
 import matplotlib.pyplot as plt
 plt.rcParams["font.family"] = "Times New Roman"
 import matplotlib.dates as mdates
@@ -519,3 +522,74 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1):
         print('')
     if verbose>0: print('total observations: ', total_bact_samples)
     return x_batches, y_batches
+
+
+def generate_event_based_batches(data, batch_size, args, predef_intervals, verbosity=1):
+    args = deepcopy(args)
+    events = len(predef_intervals)
+
+    x_batches = []
+    y_batches = []
+
+    for event_intvl in predef_intervals:
+        if not isinstance(event_intvl, np.ndarray):
+            raise ValueError("Predefined arrays for each event must be numpy array")
+
+        if len(np.unique(np.diff(event_intvl))) > 1:
+            args['trim_last_batch'] = False
+
+        event_generator = Batch_Generator(data, batch_size, args, verbose=verbosity)
+        _gen = event_generator.many_to_one(predef_interval=event_intvl)
+
+        x, y = check_and_initiate_batch(event_generator, _gen, verbosity)
+
+        for x_batch, y_batch in zip(x, y):
+            x_batches.append(x_batch)
+            y_batches.append(y_batch)
+
+    if verbosity > 0:
+        for x_batch, y_batch in zip(x_batches, y_batches):
+            print(x_batch.shape, y_batch.shape)
+
+    return x_batches, y_batches
+
+def nan_to_num(array, outs, replace_with=0.0):
+    array = array.copy()
+    y = np.array(array[:, -outs:], dtype=np.float32)
+    y = np.nan_to_num(y, nan=replace_with)
+    array[:, -outs:] = y
+    return array
+
+
+def maybe_create_path(prefix=None, path=None):
+    if path is None:
+        jetzt = datetime.datetime.now()
+        jahre = str(jetzt.year)
+        month = str(jetzt.month)
+        if len(month) < 2:
+            month = '0' + month
+        tag = str(jetzt.day)
+        if len(tag) < 2:
+            tag = '0' + tag
+        date = jahre + month + tag
+
+        stunde = str(jetzt.hour)
+        if len(stunde) < 2:
+            stunde = '0' + stunde
+        minute = str(jetzt.minute)
+        if len(minute) < 2:
+            minute = '0' + minute
+
+        save_dir = date + '_' + stunde + str(minute)
+        model_dir = os.path.join(os.getcwd(), "models")
+
+        if prefix: model_dir = os.path.join(model_dir, prefix)
+
+        save_dir = os.path.join(model_dir, save_dir)
+    else:
+        save_dir = path
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    return save_dir
