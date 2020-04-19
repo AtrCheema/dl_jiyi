@@ -1,0 +1,28 @@
+
+
+
+
+# text and xlsx files generally do not contain code
+*.txt
+*.xlsx
+*.ipynb
+
+#junk files
+read_data.py
+
+
+# folders
+.idea/
+.ipynb_checkpoints/
+__pycache__/
+graph/
+models/
+results/
+data/
+
+
+# checkpoints
+*.index
+*.meta
+*.data-00000-of-00001
+checkpoint

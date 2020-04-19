@@ -1,0 +1,521 @@
+
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+plt.rcParams["font.family"] = "Times New Roman"
+import matplotlib.dates as mdates
+
+
+def random_array(_length, lower=0.0, upper=0.5):
+    """This creates a random array of length `length` and the floats vary between `lower` and `upper`."""
+    rand_array = np.zeros(_length)
+    for i in range(_length):
+        rand_array[i] = random.uniform(lower, upper)
+    return rand_array
+
+
+colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
+        'pcp6': np.array([0.21407651, 0.23047467, 0.69924557]),
+        'sur_q_cha': np.array([0.76985966, 0.33074703, 0.22861025]),
+        'pred': np.array([0.81831849, 0.17526342, 0.4766505]),
+        'Predicted Bacteria': np.array([0.94577241, 0.08725546, 0.11906984]),
+        'pcp3': np.array([0.38079258, 0.17830983, 0.78165943]),
+        'pcp1': np.array([0.74503799, 0.72589453, 0.91296436]),
+        'tide': np.array([0.39510605, 0.11174541, 0.90067133]),
+        'atm_temp': np.array([0.9624212,  0.28477194, 0.4760216]),
+        'W_temp': np.array([0.51618149, 0.16053867, 0.45268923]),
+        'wind_sp': np.array([0.76985966, 0.33074703, 0.22861025]),
+        'sal': np.array([0.76985966, 0.33074703, 0.22861025]),
+        'Total Discharge': np.array([0.38079258, 0.17830983, 0.78165943]),
+        'wind_dir': np.array([0.38079258, 0.17830983, 0.78165943]),
+        'ecoli': np.array([0.38079258, 0.17830983, 0.78165943]),
+        'atm_p': np.array( [0.13778617, 0.06228198, 0.33547859]),
+        'inti1': np.array([0.96707953, 0.46268314, 0.45772886]),
+        'Training NSE': np.array([0.13778617, 0.06228198, 0.33547859]),
+        'Validation NSE': np.array([0.96707953, 0.46268314, 0.45772886]),
+        'aac': np.array([0.17221373, 0.53023578, 0.96788307]),
+        'blaTEM': np.array([0.49902624, 0.93245149, 0.12125226]),
+        'Total_otus': np.array([0.92875036, 0.09364162, 0.33348078]),
+        'Total_args': np.array([0.93950089, 0.64582256, 0.16928645]),
+        'tetx': np.array([0.06802773, 0.46382623, 0.49007703]),
+        'otu_94': np.array([0.13684922, 0.98802401, 0.34518303]),
+        'otu_5575': np.array([0.54829269, 0.15069842, 0.06147751]),
+        'sul1': np.array([0.26900851, 0.96337978, 0.94641933]),
+        'otu_273': np.array([0.95896577, 0.58394066, 0.04189788]),
+        '16s': np.array([0.17877267, 0.78893675, 0.92613355])
+       }
+
+
+labels = {
+    "pcp1": "1 hour commulative rain",
+    "pcp3": "3 hour commulative rain",
+    "pcp6": "6 hour commulative rain",
+    "pcp12": "12 hour commulative rain",
+    "ecoli": "E-Coli",
+    "16s": "16s",
+    "inti1": "inti1 ",
+    "tide": "Tide",
+    "W_temp": "Water Temperature",
+    "sal": "Salinity",
+    "wind_sp": "Wind speed",
+    "wind_dir": "Wind direction ",
+    "atm_temp": "Atmospheric Temperature",
+    "atm_p": "Atmospheric Pressure",
+
+    "aac": "aac(6')-lb-cr",
+    "blaTEM": "blaTEM",
+    "sul1": "sul1",
+    "tetx": "tetX",
+    "Total_args": "Total ARGs",
+    "otu_94": "OTU 94",
+    "otu_273": "OTU 273",
+    "otu_5575": "OTU 5575",
+    "Total_OTUs": "Total OTUs"
+}
+
+y_labels = {
+    "pcp1": "mm",
+    "pcp3": "mm",
+    "pcp6": "mm",
+    "pcp12": "mm",
+    "ecoli": "MPN per 100 mL",
+    "16s": "Copies per mL",
+    "inti1": "Copies per mL",
+    "tide": "cm",
+    "W_temp": "$^\circ$C",
+    "sal": "PSU",
+    "wind_sp": "$ms{-1}$",
+    "wind_dir": "$^\circ$",
+    "atm_temp": "$^\circ$C",
+    "atm_p": "hPa",
+
+    "aac": "Copies per mL",
+    "blaTEM": "copies per mL",
+    "sul1": "copies per mL",
+    "tetx": "copies per mL",
+    "Total_args": "Copies per mL",
+    "otu_94": "reads",
+    "otu_273": "reads",
+    "otu_5575": "reads",
+    "Total_OTUs": "reads"
+}
+
+def process_axis(axis,
+                 data,
+                 style='.',
+                 c = None,
+                 ylim = None,    # limit for y axis
+                 x_label = "Time",
+                 xl_fs = 14,
+                 y_label=None,
+                 yl_fs = 14,                        # ylabel font size
+                 yl_c = 'k',        # y label color, if 'same', c will be used else black
+                 leg_pos="best",
+                 label= None,  # legend, none means do not show legend
+                 ms=4,  # markersize
+                 leg_fs=16,
+                 leg_ms=4,  # legend scale
+                 leg_cols=1,  # legend columns, default means all legends will be shown in one columns
+                 leg_mode=None,
+                 leg_frameon=None,  # turn on/off legend box, default is matplotlib's default
+                 xtp_ls=12,  # x tick_params labelsize
+                 ytp_ls=12,  # x tick_params labelsize
+                 xtp_c = 'k',    # x tick colors if 'same' c will be used else black
+                 ytp_c = 'k',    # y tick colors, if 'same', c will be used else else black
+                 log= False,
+                 show_xaxis=True,
+                 top_spine = True,
+                 bottom_spine=True,
+                 invert_yaxis=False,
+                 verbose=True):
+
+    if c is None:
+        if label in colors:
+            c = colors[label]
+        else:
+            c = random_array(3, 0.01, 0.99)
+            if verbose: print('for ', label, c)
+
+    in_label = label
+    if label in labels: label=labels[label]
+    axis.plot(data, style, markersize=ms, color=c, label=label)
+
+    ylc = c
+    if yl_c != 'same':
+        ylc = 'k'
+
+    if label is not None:
+        axis.legend(loc=leg_pos, fontsize=leg_fs, markerscale=leg_ms, ncol=leg_cols, mode=leg_mode, frameon=leg_frameon)
+
+    # if no y_label is provided, it will checked in y_labels dictionary if not there, ' ' will be used.
+    if y_label is None:
+        if in_label in y_labels: y_label=y_labels[in_label]
+        else: y_label=' '
+    axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)
+
+    if log:
+        axis.set_yscale('log')
+
+    if invert_yaxis:
+        axis.set_ylim(axis.get_ylim()[::-1])
+
+    if ylim is not None:
+        if not isinstance(ylim, tuple):
+            raise TypeError("ylim must be tuple {} provided".format(ylim))
+        axis.set_ylim(ylim)
+
+    xtpc = c
+    if xtp_c != 'same':
+        xtpc = 'k'
+
+    ytpc = c
+    if ytp_c != 'same':
+        ytpc = 'k'
+
+    axis.tick_params(axis="x", which='major', labelsize=xtp_ls, colors=xtpc)
+    axis.tick_params(axis="y", which='major', labelsize=ytp_ls, colors=ytpc)
+
+    axis.get_xaxis().set_visible(show_xaxis)
+
+    if show_xaxis:
+        axis.set_xlabel(x_label, fontsize=xl_fs)
+
+    axis.spines['top'].set_visible(top_spine)
+    axis.spines['bottom'].set_visible(bottom_spine)
+
+    # loc = mdates.AutoDateLocator(minticks=4, maxticks=6)
+    # axis.xaxis.set_major_locator(loc)
+    # fmt = mdates.AutoDateFormatter(loc)
+    # axis.xaxis.set_major_formatter(fmt)
+
+    return
+
+
+def set_fig_dim(fig, width, height):
+    fig.set_figwidth(width)
+    fig.set_figheight(height)
+
+
+def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_ms=4, obs_logy=False, p_ylim=None, single_ax_plots=None):
+
+    if st is None:
+        st = data.index[0]
+    if en is None:
+        en = data.index[-1]
+
+    no_of_plots = len(cols) #data.shape[1]
+    if single_ax_plots is not None:
+        if not isinstance(single_ax_plots, list):
+            raise TypeError
+        no_of_plots += 1
+
+    _fig, axis = plt.subplots(no_of_plots, sharex='all')
+    set_fig_dim(_fig, 19, 16)
+
+    idx = 0
+    for ax in axis:
+        if no_of_plots-1>idx>0: # middle plots
+            style = '-'
+            invert_yaxis = False
+            if 'pcp' in cols[idx]:
+                style = '-'
+                invert_yaxis = True
+            _data = data[cols[idx]][st:en].values
+            process_axis(ax, _data, style='*', ms=8, c=colors[cols[idx]])
+            process_axis(ax, _data, style=style,ms=6, label=cols[idx], show_xaxis=False, bottom_spine=False, leg_fs=14,
+                         invert_yaxis=invert_yaxis, verbose=True)
+
+        elif idx == no_of_plots-1: # last
+            if single_ax_plots is not None:
+                for col in single_ax_plots:
+                    val = col
+                    ms=8
+                    style = '-'
+                    if val == 'Excluded from training':
+                        ms=12
+                        style = '*'
+
+                    _data = data[col][st:en].values
+                    process_axis(ax, _data, style='*', ms=ms, c=colors[val])
+                    process_axis(ax, _data, style=style, ms=ms, label=val, leg_fs=14, leg_pos='upper left', verbose=True)
+            else:
+                val = cols[idx]
+                _data = data[cols[idx]][st:en].values
+                process_axis(ax, _data, style='*', ms=10, c=colors[val], log=obs_logy)
+                process_axis(ax, _data, style='-',ms=9,  label=val, leg_fs=14, verbose=True, log=obs_logy)
+
+        elif idx==0:  # first plot
+            val = cols[idx]
+            _data = data[val][st:en].values
+            invert_yaxis = False
+            if 'pcp' in cols[idx]:
+                style = '-'
+                invert_yaxis=True
+            process_axis(ax, _data, style='*', ms=8, c=colors[val])
+            process_axis(ax, _data, style='-',ms=6,  label=val, show_xaxis=False, bottom_spine=False, leg_fs=14,
+                         verbose=True, invert_yaxis=invert_yaxis)
+
+        idx += 1
+
+    plt.subplots_adjust(wspace=0.05, hspace=0.01)
+    if save_name:
+        plt.savefig(save_name, dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+
+def first_nan_from_end(ar):
+    """ 
+    This function finds index for first nan from the group which is present at the end of array.
+    [np.nan, np.nan, 0,2,3,0,3, np.nan, np.nan, np.nan, np.nan] >> 7
+    [np.nan, np.nan, 1,2,3,0, np.nan, np.nan, np.nan] >> 6
+    [0,2,3,0,3] >> 5
+    [np.nan, np.nan, 0,2,3,0,3] >> 7    
+    """
+    last_non_zero=0
+    
+    for idx, val in enumerate(ar[::-1]):
+        if ~np.isnan(val): # val >= 0:
+            last_non_zero = idx
+            break
+    return ar.shape[0] - last_non_zero
+
+
+class Batch_Generator(object):
+    """
+    :param data: `ndarray`, input data.
+    :param args: a dictionary containing values of parameters depending upon method used.
+    :param method: str, default is 'many_to_one', if many_to_one, then following keys are expected in 
+                   dictionary args.
+            :lookback: `int`, sequence length, number of values LSTM will see at time `t` to make prediction at `t+1`.
+            :in_features: `int`, number of columns in `data` starting from 0 to be considered as input
+            :out_features: `int`, number of columns in `data` started from last to be considred as output/prediction.
+            :trim_last_batch: bool, if True, last batch will be ignored if that contains samples less than `batch_size`.
+            :norm: a dictionary which contains scaler object with which to normalize x and y data. We use separate scalers for x
+                         and y data. Keys must be `x_scaler` and `y_scaler`.
+            :batch_size:
+            :step: step size in input data
+            :min_ind: starting point from `data`
+            :max_ind: end point from `data`
+            :future_y_val: number of values to predict
+    """
+    
+    def __init__(self, data, batch_size, args, method='many_to_one', verbose=2):
+        
+        self.data = data
+        self.batch_size = batch_size
+        self.args = args
+        self.method=method
+        self.verbose=verbose
+        self.ignoriert_am_anfang=None
+        self.ignoriert_am_ende = None
+        self.no_of_batches = None
+    
+
+    def __len__(self):
+        return self.args['min_ind'] - self.args['max_ind']
+    
+    def many_to_one(self, predef_interval=None):
+    # interval = np.array([0, 52700, 140900, 228000, 394000, 449250])
+        many_to_one_args = {'lookback': 'required',
+                            'in_features': 'required',
+                            'out_features': 'required',
+                            'min_ind': 0,
+                            'max_ind': self.data.shape[0],
+                            'future_y_val': 'required',
+                            'step': 1,
+                            'norm': None,
+                            'trim_last_batch':True}
+
+        for k,v in many_to_one_args.items():
+            if v=='required':
+                if k not in self.args:
+                    raise ValueError('for {} method, value of {} is required'.format(self.method, k))
+                else:
+                    many_to_one_args[k] = self.args[k]
+            else:
+                if k in self.args:
+                    many_to_one_args[k] = self.args[k]
+
+        lookback = many_to_one_args['lookback']
+        in_features = many_to_one_args['in_features']
+        out_features = many_to_one_args['out_features']
+        self.min_ind = many_to_one_args['min_ind']
+        self.max_ind = many_to_one_args['max_ind']
+        future_y_val = many_to_one_args['future_y_val']
+        step = many_to_one_args['step']
+        norm = many_to_one_args['norm']
+        trim_last_batch = many_to_one_args['trim_last_batch']
+        print(self.min_ind, self.max_ind, in_features, out_features, 'here')
+        # selecting the data of interest for x and y    
+        X = self.data[self.min_ind:self.max_ind, 0:in_features]
+        Y = self.data[self.min_ind:self.max_ind, -out_features:].reshape(-1,out_features)
+
+        if norm is not None:
+            x_scaler = norm['x_scaler']
+            y_scaler = norm['y_scaler']
+            X = x_scaler.fit_transform(X)
+            Y = y_scaler.fit_transform(Y)
+
+        # container for keeping x and y windows. A `windows` is here defined as one complete set of data at one timestep.
+        x_wins = np.full((X.shape[0], lookback, in_features), np.nan, dtype=np.float32)
+        y_wins = np.full((Y.shape[0], out_features), np.nan)
+
+        # creating windows from X data
+        st = lookback*step - step # starting point of sampling from data
+        for j in range(st, X.shape[0]-lookback):
+            en = j - lookback*step
+            indices = np.arange(j, en, -step)
+            ind = np.flip(indices)
+            x_wins[j,:,:] = X[ind,:]
+
+        # creating windows from Y data
+        for i in range(0, Y.shape[0]-lookback):
+            y_wins[i,:] = Y[i+lookback,:]
+
+
+
+        """removing trailing nans"""
+        first_nan_at_end = first_nan_from_end(y_wins[:,0])  # first nan in last part of data, start skipping from here
+        y_wins = y_wins[0:first_nan_at_end,:]
+        x_wins = x_wins[0:first_nan_at_end,:]
+        if self.verbose>1:
+            print('first nan from end is at: {}, x_wins shape is {}, y_wins shape is {}'
+                  .format(first_nan_at_end, x_wins.shape, y_wins.shape))
+
+        """removing nans from start"""
+        y_val = st-lookback + future_y_val
+        if st>0:
+            x_wins = x_wins[st:,:]
+            y_wins = y_wins[y_val:,:]    
+
+        if self.verbose>1:
+            print("""shape of x data: {} \nshape of y data: {}""".format(x_wins.shape, y_wins.shape))
+
+            print(""".\n{} values are skipped from start and {} values are skipped from end in output array"""
+              .format(st, X.shape[0]-first_nan_at_end))
+        self.ignoriert_am_anfang = st
+        self.ignoriert_am_ende = X.shape[0]-first_nan_at_end
+
+        pot_samples = x_wins.shape[0]
+
+        if self.verbose>1:
+            print('\npotential samples are {}'.format(pot_samples))
+
+        residue = pot_samples % self.batch_size
+        if self.verbose>1:
+            print('\nresidue is {} '.format(residue))
+        self.residue = residue
+
+        samples = pot_samples - residue
+        if self.verbose>1:
+            print('\nActual samples are {}'.format(samples))
+        self.samples = samples
+
+        if predef_interval is None:
+            interval = np.arange(0, samples + self.batch_size, self.batch_size)
+            if self.verbose>1:
+                print('\nPotential intervals: {}'.format(interval ))
+            interval = np.append(interval, pot_samples)
+
+        else:
+            interval = predef_interval
+            if trim_last_batch:
+                inf_bat_sz = np.unique(np.diff(np.array(predef_interval)))  # inferred batch size
+            else:
+                # last batch will be of different size
+                inf_bat_sz = np.unique(np.diff(np.array(predef_interval[0:-1])))
+                self.last_bat_sz = predef_interval[-1] - predef_interval[-2]
+
+            if len(inf_bat_sz)>1:
+                raise ValueError("predefined array must have constant steps")
+            if inf_bat_sz != self.batch_size:
+                raise ValueError("Inferred batch size from predefined array is not equal to batch size defined")
+
+        #nterval = np.unique(interval) 
+
+        if self.verbose>1:
+            print('\nActual interval: {} '.format(interval))
+
+        if trim_last_batch:
+            no_of_batches = len(interval)-2
+        else:
+            no_of_batches = len(interval)-1 
+
+        if no_of_batches ==0: no_of_batches=1
+
+        if self.verbose>0: print('\nNumber of batches are {} '.format(no_of_batches))
+        self.no_of_batches = no_of_batches
+
+        # code for generator
+        gen_i = 1
+        while 1:
+
+            for b in range(no_of_batches):
+                st = interval[b]
+                en = interval[b + 1]
+                x_batch = x_wins[st:en, :, :]
+                y_batch = y_wins[st:en]
+
+                gen_i +=1
+
+                yield x_batch, y_batch
+
+
+def check_and_initiate_batch(generator_object, _batch_generator, verbose=1):
+    x_batch, mask_y_batch = next(_batch_generator)
+    y_of_interest = mask_y_batch[np.where(mask_y_batch > 0.0)]
+    if verbose > 0: print(x_batch.shape, mask_y_batch.shape, y_of_interest.shape)
+
+    no_of_batches = generator_object.no_of_batches
+    batch_size = x_batch.shape[0]
+    lookback = x_batch.shape[1]
+    in_features = x_batch.shape[2]
+    out_features = mask_y_batch.shape[1]
+
+    if hasattr(generator_object, 'last_bat_sz'):
+        #batch size is variable so one array of all batches can not be constructed
+        x_batches = [None]*no_of_batches
+        y_batches = [None]*no_of_batches
+    else:
+        x_batches = np.full((no_of_batches, batch_size, lookback, in_features), np.nan)
+        y_batches = np.full((no_of_batches, batch_size, out_features), np.nan)
+
+    # this for loop is so that next time first batch in for loop is really the first batch
+    for i in range(no_of_batches - 1):
+        _, _ = next(_batch_generator)
+
+    total_bact_samples = {}
+    for i in range(out_features):
+        total_bact_samples[i] = 0
+
+    if verbose>0: print('batch ', 'Non zeros')
+    for i in range(no_of_batches):
+
+        mask_x_batch, mask_y_batch = next(_batch_generator)
+
+        if hasattr(generator_object, 'last_bat_sz'):
+            x_batches[i] = mask_x_batch
+            y_batches[i] = mask_y_batch
+        else:
+            x_batches[i, :] = mask_x_batch
+            y_batches[i, :] = mask_y_batch
+
+        print(i, end='      ')
+
+        for out_feat in range(out_features):
+
+            a, = np.where(mask_y_batch[:, out_feat] > 0.0)
+            non_zeros = a.shape[0]
+            total_bact_samples[out_feat] += non_zeros
+
+            if verbose > 1:
+                print(non_zeros, mask_y_batch[a].reshape(-1, ))
+            elif verbose > 0:
+                print(non_zeros, end=' ')
+            if non_zeros < 1:
+                raise ValueError('At minibatch {} exists where all labels are missing'.format(i))
+
+        print('')
+    if verbose>0: print('total observations: ', total_bact_samples)
+    return x_batches, y_batches
