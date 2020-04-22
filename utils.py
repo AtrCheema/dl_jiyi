@@ -4,6 +4,8 @@ import numpy as np
 import random
 import datetime
 from copy import deepcopy
+from collections import OrderedDict
+from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 plt.rcParams["font.family"] = "Times New Roman"
 import matplotlib.dates as mdates
@@ -629,3 +631,19 @@ def check_min_loss(epoch_loss_array, batch_loss_array, _epoch, func1, func, _ps,
     epoch_loss_array.append(current_epoch_loss)
 
     return _ps, min_loss_epoch, _save_fg
+
+
+def normalize_data(dataset):
+    # normalizing data and making batches
+    # container for normalized input data
+    dataset_n = np.full(dataset.shape, np.nan)
+    all_scalers = OrderedDict()
+
+    for dat in range(dataset.shape[1]):
+        value = dataset[:, dat]
+        val_scaler = MinMaxScaler(feature_range=(0, 1))
+        val_norm = val_scaler.fit_transform(value.reshape(-1, 1))
+        dataset_n[:, dat] = val_norm.reshape(-1, )
+        all_scalers[str(dat) + '_scaler'] = val_scaler
+
+    return dataset_n, all_scalers

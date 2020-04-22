@@ -3,13 +3,15 @@ from data_preparation import DATA
 from neural_net import NeuralNetwork as Model
 from utils import generate_event_based_batches
 from utils import nan_to_num, maybe_create_path
-from post_processing import post_process
+from utils import normalize_data
+# from post_processing import post_process
 
 import numpy as np
 import os
 import pandas as pd
 from collections import OrderedDict
 
+np.printoptions(precision=5)
 
 data_obj = DATA(freq='30min')
 all_data = data_obj.df
@@ -25,15 +27,20 @@ df.head()
 
 dataset = nan_to_num(df.values, len(out_features), replace_with=0.0)
 
-_path = maybe_create_path()
-verbosity = 1
-
 data_conf = OrderedDict()
 lookback = 8
 BatchSize = 24
 data_conf['in_features'] = in_features
 data_conf['out_features'] = out_features
 data_conf['lookback'] = lookback
+data_conf['normalize'] = True
+
+
+if data_conf['normalize']:
+    dataset, scalers = normalize_data(dataset)
+
+_path = maybe_create_path()
+verbosity = 1
 
 train_args = {'lookback': lookback,
               'in_features': len(in_features),
