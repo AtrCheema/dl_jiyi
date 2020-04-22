@@ -18,35 +18,35 @@ def random_array(_length, lower=0.0, upper=0.5):
 
 
 colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
-        'pcp6': np.array([0.21407651, 0.23047467, 0.69924557]),
-        'sur_q_cha': np.array([0.76985966, 0.33074703, 0.22861025]),
-        'pred': np.array([0.81831849, 0.17526342, 0.4766505]),
-        'Predicted Bacteria': np.array([0.94577241, 0.08725546, 0.11906984]),
-        'pcp3': np.array([0.38079258, 0.17830983, 0.78165943]),
-        'pcp1': np.array([0.74503799, 0.72589453, 0.91296436]),
-        'tide': np.array([0.39510605, 0.11174541, 0.90067133]),
-        'atm_temp': np.array([0.9624212,  0.28477194, 0.4760216]),
-        'W_temp': np.array([0.51618149, 0.16053867, 0.45268923]),
-        'wind_sp': np.array([0.76985966, 0.33074703, 0.22861025]),
-        'sal': np.array([0.76985966, 0.33074703, 0.22861025]),
-        'Total Discharge': np.array([0.38079258, 0.17830983, 0.78165943]),
-        'wind_dir': np.array([0.38079258, 0.17830983, 0.78165943]),
-        'ecoli': np.array([0.38079258, 0.17830983, 0.78165943]),
-        'atm_p': np.array( [0.13778617, 0.06228198, 0.33547859]),
-        'inti1': np.array([0.96707953, 0.46268314, 0.45772886]),
-        'Training NSE': np.array([0.13778617, 0.06228198, 0.33547859]),
-        'Validation NSE': np.array([0.96707953, 0.46268314, 0.45772886]),
-        'aac': np.array([0.17221373, 0.53023578, 0.96788307]),
-        'blaTEM': np.array([0.49902624, 0.93245149, 0.12125226]),
-        'Total_otus': np.array([0.92875036, 0.09364162, 0.33348078]),
-        'Total_args': np.array([0.93950089, 0.64582256, 0.16928645]),
-        'tetx': np.array([0.06802773, 0.46382623, 0.49007703]),
-        'otu_94': np.array([0.13684922, 0.98802401, 0.34518303]),
-        'otu_5575': np.array([0.54829269, 0.15069842, 0.06147751]),
-        'sul1': np.array([0.26900851, 0.96337978, 0.94641933]),
-        'otu_273': np.array([0.95896577, 0.58394066, 0.04189788]),
-        '16s': np.array([0.17877267, 0.78893675, 0.92613355])
-       }
+          'pcp6': np.array([0.21407651, 0.23047467, 0.69924557]),
+          'sur_q_cha': np.array([0.76985966, 0.33074703, 0.22861025]),
+          'pred': np.array([0.81831849, 0.17526342, 0.4766505]),
+          'Predicted Bacteria': np.array([0.94577241, 0.08725546, 0.11906984]),
+          'pcp3': np.array([0.38079258, 0.17830983, 0.78165943]),
+          'pcp1': np.array([0.74503799, 0.72589453, 0.91296436]),
+          'tide': np.array([0.39510605, 0.11174541, 0.90067133]),
+          'atm_temp': np.array([0.9624212,  0.28477194, 0.4760216]),
+          'W_temp': np.array([0.51618149, 0.16053867, 0.45268923]),
+          'wind_sp': np.array([0.76985966, 0.33074703, 0.22861025]),
+          'sal': np.array([0.76985966, 0.33074703, 0.22861025]),
+          'Total Discharge': np.array([0.38079258, 0.17830983, 0.78165943]),
+          'wind_dir': np.array([0.38079258, 0.17830983, 0.78165943]),
+          'ecoli': np.array([0.38079258, 0.17830983, 0.78165943]),
+          'atm_p': np.array([0.13778617, 0.06228198, 0.33547859]),
+          'inti1': np.array([0.96707953, 0.46268314, 0.45772886]),
+          'Training NSE': np.array([0.13778617, 0.06228198, 0.33547859]),
+          'Validation NSE': np.array([0.96707953, 0.46268314, 0.45772886]),
+          'aac': np.array([0.17221373, 0.53023578, 0.96788307]),
+          'blaTEM': np.array([0.49902624, 0.93245149, 0.12125226]),
+          'Total_otus': np.array([0.92875036, 0.09364162, 0.33348078]),
+          'Total_args': np.array([0.93950089, 0.64582256, 0.16928645]),
+          'tetx': np.array([0.06802773, 0.46382623, 0.49007703]),
+          'otu_94': np.array([0.13684922, 0.98802401, 0.34518303]),
+          'otu_5575': np.array([0.54829269, 0.15069842, 0.06147751]),
+          'sul1': np.array([0.26900851, 0.96337978, 0.94641933]),
+          'otu_273': np.array([0.95896577, 0.58394066, 0.04189788]),
+          '16s': np.array([0.17877267, 0.78893675, 0.92613355])
+          }
 
 
 labels = {
@@ -85,11 +85,11 @@ y_labels = {
     "16s": "Copies per mL",
     "inti1": "Copies per mL",
     "tide": "cm",
-    "W_temp": "$^\circ$C",
+    "W_temp": r"$^\circ$C",
     "sal": "PSU",
     "wind_sp": "$ms{-1}$",
-    "wind_dir": "$^\circ$",
-    "atm_temp": "$^\circ$C",
+    "wind_dir": r"$^\circ$",
+    "atm_temp": r"$^\circ$C",
     "atm_p": "hPa",
 
     "aac": "Copies per mL",
@@ -103,18 +103,19 @@ y_labels = {
     "Total_OTUs": "reads"
 }
 
+
 def process_axis(axis,
                  data,
                  style='.',
-                 c = None,
-                 ylim = None,    # limit for y axis
-                 x_label = "Time",
-                 xl_fs = 14,
+                 c=None,
+                 ylim=None,    # limit for y axis
+                 x_label="Time",
+                 xl_fs=14,
                  y_label=None,
-                 yl_fs = 14,                        # ylabel font size
-                 yl_c = 'k',        # y label color, if 'same', c will be used else black
+                 yl_fs=14,                        # ylabel font size
+                 yl_c='k',        # y label color, if 'same', c will be used else black
                  leg_pos="best",
-                 label= None,  # legend, none means do not show legend
+                 label=None,  # legend, none means do not show legend
                  ms=4,  # markersize
                  leg_fs=16,
                  leg_ms=4,  # legend scale
@@ -123,11 +124,11 @@ def process_axis(axis,
                  leg_frameon=None,  # turn on/off legend box, default is matplotlib's default
                  xtp_ls=12,  # x tick_params labelsize
                  ytp_ls=12,  # x tick_params labelsize
-                 xtp_c = 'k',    # x tick colors if 'same' c will be used else black
-                 ytp_c = 'k',    # y tick colors, if 'same', c will be used else else black
-                 log= False,
+                 xtp_c='k',    # x tick colors if 'same' c will be used else black
+                 ytp_c='k',    # y tick colors, if 'same', c will be used else else black
+                 log=False,
                  show_xaxis=True,
-                 top_spine = True,
+                 top_spine=True,
                  bottom_spine=True,
                  invert_yaxis=False,
                  verbose=True):
@@ -137,10 +138,12 @@ def process_axis(axis,
             c = colors[label]
         else:
             c = random_array(3, 0.01, 0.99)
-            if verbose: print('for ', label, c)
+            if verbose:
+                print('for ', label, c)
 
     in_label = label
-    if label in labels: label=labels[label]
+    if label in labels:
+        label = labels[label]
     axis.plot(data, style, markersize=ms, color=c, label=label)
 
     ylc = c
@@ -152,8 +155,10 @@ def process_axis(axis,
 
     # if no y_label is provided, it will checked in y_labels dictionary if not there, ' ' will be used.
     if y_label is None:
-        if in_label in y_labels: y_label=y_labels[in_label]
-        else: y_label=' '
+        if in_label in y_labels:
+            y_label = y_labels[in_label]
+        else:
+            y_label = ' '
     axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)
 
     if log:
@@ -199,14 +204,15 @@ def set_fig_dim(fig, width, height):
     fig.set_figheight(height)
 
 
-def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_ms=4, obs_logy=False, p_ylim=None, single_ax_plots=None):
+def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_ms=4, obs_logy=False, p_ylim=None,
+            single_ax_plots=None):
 
     if st is None:
         st = data.index[0]
     if en is None:
         en = data.index[-1]
 
-    no_of_plots = len(cols) #data.shape[1]
+    no_of_plots = len(cols)  # data.shape[1]
     if single_ax_plots is not None:
         if not isinstance(single_ax_plots, list):
             raise TypeError
@@ -217,7 +223,7 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
 
     idx = 0
     for ax in axis:
-        if no_of_plots-1>idx>0: # middle plots
+        if no_of_plots-1 > idx > 0:  # middle plots
             style = '-'
             invert_yaxis = False
             if 'pcp' in cols[idx]:
@@ -225,37 +231,38 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
                 invert_yaxis = True
             _data = data[cols[idx]][st:en].values
             process_axis(ax, _data, style='*', ms=8, c=colors[cols[idx]])
-            process_axis(ax, _data, style=style,ms=6, label=cols[idx], show_xaxis=False, bottom_spine=False, leg_fs=14,
+            process_axis(ax, _data, style=style, ms=6, label=cols[idx], show_xaxis=False, bottom_spine=False, leg_fs=14,
                          invert_yaxis=invert_yaxis, verbose=True)
 
-        elif idx == no_of_plots-1: # last
+        elif idx == no_of_plots-1:  # last
             if single_ax_plots is not None:
                 for col in single_ax_plots:
                     val = col
-                    ms=8
+                    ms = 8
                     style = '-'
                     if val == 'Excluded from training':
-                        ms=12
+                        ms = 12
                         style = '*'
 
                     _data = data[col][st:en].values
                     process_axis(ax, _data, style='*', ms=ms, c=colors[val])
-                    process_axis(ax, _data, style=style, ms=ms, label=val, leg_fs=14, leg_pos='upper left', verbose=True)
+                    process_axis(ax, _data, style=style, ms=ms, label=val, leg_fs=14, leg_pos='upper left',
+                                 verbose=True)
             else:
                 val = cols[idx]
                 _data = data[cols[idx]][st:en].values
                 process_axis(ax, _data, style='*', ms=10, c=colors[val], log=obs_logy)
-                process_axis(ax, _data, style='-',ms=9,  label=val, leg_fs=14, verbose=True, log=obs_logy)
+                process_axis(ax, _data, style='-', ms=9,  label=val, leg_fs=14, verbose=True, log=obs_logy)
 
-        elif idx==0:  # first plot
+        elif idx == 0:  # first plot
             val = cols[idx]
             _data = data[val][st:en].values
             invert_yaxis = False
             if 'pcp' in cols[idx]:
                 style = '-'
-                invert_yaxis=True
+                invert_yaxis = True
             process_axis(ax, _data, style='*', ms=8, c=colors[val])
-            process_axis(ax, _data, style='-',ms=6,  label=val, show_xaxis=False, bottom_spine=False, leg_fs=14,
+            process_axis(ax, _data, style='-', ms=6,  label=val, show_xaxis=False, bottom_spine=False, leg_fs=14,
                          verbose=True, invert_yaxis=invert_yaxis)
 
         idx += 1
@@ -266,7 +273,6 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
     plt.close()
 
 
-
 def first_nan_from_end(ar):
     """ 
     This function finds index for first nan from the group which is present at the end of array.
@@ -275,16 +281,16 @@ def first_nan_from_end(ar):
     [0,2,3,0,3] >> 5
     [np.nan, np.nan, 0,2,3,0,3] >> 7    
     """
-    last_non_zero=0
+    last_non_zero = 0
     
     for idx, val in enumerate(ar[::-1]):
-        if ~np.isnan(val): # val >= 0:
+        if ~np.isnan(val):  # val >= 0:
             last_non_zero = idx
             break
     return ar.shape[0] - last_non_zero
 
 
-class Batch_Generator(object):
+class BatchGenerator(object):
     """
     :param data: `ndarray`, input data.
     :param args: a dictionary containing values of parameters depending upon method used.
@@ -294,8 +300,8 @@ class Batch_Generator(object):
             :in_features: `int`, number of columns in `data` starting from 0 to be considered as input
             :out_features: `int`, number of columns in `data` started from last to be considred as output/prediction.
             :trim_last_batch: bool, if True, last batch will be ignored if that contains samples less than `batch_size`.
-            :norm: a dictionary which contains scaler object with which to normalize x and y data. We use separate scalers for x
-                         and y data. Keys must be `x_scaler` and `y_scaler`.
+            :norm: a dictionary which contains scaler object with which to normalize x and y data. We use separate
+            scalers for x and y data. Keys must be `x_scaler` and `y_scaler`.
             :batch_size:
             :step: step size in input data
             :min_ind: starting point from `data`
@@ -308,18 +314,17 @@ class Batch_Generator(object):
         self.data = data
         self.batch_size = batch_size
         self.args = args
-        self.method=method
-        self.verbose=verbose
-        self.ignoriert_am_anfang=None
+        self.method = method
+        self.verbose = verbose
+        self.ignoriert_am_anfang = None
         self.ignoriert_am_ende = None
         self.no_of_batches = None
     
-
     def __len__(self):
         return self.args['min_ind'] - self.args['max_ind']
     
     def many_to_one(self, predef_interval=None):
-    # interval = np.array([0, 52700, 140900, 228000, 394000, 449250])
+
         many_to_one_args = {'lookback': 'required',
                             'in_features': 'required',
                             'out_features': 'required',
@@ -328,10 +333,10 @@ class Batch_Generator(object):
                             'future_y_val': 'required',
                             'step': 1,
                             'norm': None,
-                            'trim_last_batch':True}
+                            'trim_last_batch': True}
 
-        for k,v in many_to_one_args.items():
-            if v=='required':
+        for k, v in many_to_one_args.items():
+            if v == 'required':
                 if k not in self.args:
                     raise ValueError('for {} method, value of {} is required'.format(self.method, k))
                 else:
@@ -351,74 +356,73 @@ class Batch_Generator(object):
         trim_last_batch = many_to_one_args['trim_last_batch']
         print(self.min_ind, self.max_ind, in_features, out_features, 'here')
         # selecting the data of interest for x and y    
-        X = self.data[self.min_ind:self.max_ind, 0:in_features]
-        Y = self.data[self.min_ind:self.max_ind, -out_features:].reshape(-1,out_features)
+        x_data = self.data[self.min_ind:self.max_ind, 0:in_features]
+        y_data = self.data[self.min_ind:self.max_ind, -out_features:].reshape(-1, out_features)
 
         if norm is not None:
             x_scaler = norm['x_scaler']
             y_scaler = norm['y_scaler']
-            X = x_scaler.fit_transform(X)
-            Y = y_scaler.fit_transform(Y)
+            x_data = x_scaler.fit_transform(x_data)
+            y_data = y_scaler.fit_transform(y_data)
 
-        # container for keeping x and y windows. A `windows` is here defined as one complete set of data at one timestep.
-        x_wins = np.full((X.shape[0], lookback, in_features), np.nan, dtype=np.float32)
-        y_wins = np.full((Y.shape[0], out_features), np.nan)
+        # container for keeping x and y windows. A `windows` is here defined as one complete set of data at
+        # one timestep.
+        x_wins = np.full((x_data.shape[0], lookback, in_features), np.nan, dtype=np.float32)
+        y_wins = np.full((y_data.shape[0], out_features), np.nan)
 
         # creating windows from X data
-        st = lookback*step - step # starting point of sampling from data
-        for j in range(st, X.shape[0]-lookback):
+        st = lookback*step - step  # starting point of sampling from data
+        for j in range(st, x_data.shape[0]-lookback):
             en = j - lookback*step
             indices = np.arange(j, en, -step)
             ind = np.flip(indices)
-            x_wins[j,:,:] = X[ind,:]
+            x_wins[j, :, :] = x_data[ind, :]
 
         # creating windows from Y data
-        for i in range(0, Y.shape[0]-lookback):
-            y_wins[i,:] = Y[i+lookback,:]
-
-
+        for i in range(0, y_data.shape[0]-lookback):
+            y_wins[i,:] = y_data[i+lookback, :]
 
         """removing trailing nans"""
-        first_nan_at_end = first_nan_from_end(y_wins[:,0])  # first nan in last part of data, start skipping from here
-        y_wins = y_wins[0:first_nan_at_end,:]
-        x_wins = x_wins[0:first_nan_at_end,:]
-        if self.verbose>1:
+        first_nan_at_end = first_nan_from_end(y_wins[:, 0])  # first nan in last part of data, start skipping from here
+        y_wins = y_wins[0:first_nan_at_end, :]
+        x_wins = x_wins[0:first_nan_at_end, :]
+        if self.verbose > 1:
             print('first nan from end is at: {}, x_wins shape is {}, y_wins shape is {}'
                   .format(first_nan_at_end, x_wins.shape, y_wins.shape))
 
         """removing nans from start"""
         y_val = st-lookback + future_y_val
-        if st>0:
-            x_wins = x_wins[st:,:]
-            y_wins = y_wins[y_val:,:]    
+        if st > 0:
+            x_wins = x_wins[st:, :]
+            y_wins = y_wins[y_val:, :]
 
-        if self.verbose>1:
+        if self.verbose > 1:
             print("""shape of x data: {} \nshape of y data: {}""".format(x_wins.shape, y_wins.shape))
 
             print(""".\n{} values are skipped from start and {} values are skipped from end in output array"""
-              .format(st, X.shape[0]-first_nan_at_end))
+                  .format(st, x_data.shape[0]-first_nan_at_end))
         self.ignoriert_am_anfang = st
-        self.ignoriert_am_ende = X.shape[0]-first_nan_at_end
+        self.ignoriert_am_ende = x_data.shape[0]-first_nan_at_end
 
         pot_samples = x_wins.shape[0]
 
-        if self.verbose>1:
+        if self.verbose > 1:
             print('\npotential samples are {}'.format(pot_samples))
 
         residue = pot_samples % self.batch_size
-        if self.verbose>1:
+        if self.verbose > 1:
             print('\nresidue is {} '.format(residue))
         self.residue = residue
 
         samples = pot_samples - residue
-        if self.verbose>1:
+        if self.verbose > 1:
             print('\nActual samples are {}'.format(samples))
         self.samples = samples
 
         if predef_interval is None:
             interval = np.arange(0, samples + self.batch_size, self.batch_size)
-            if self.verbose>1:
-                print('\nPotential intervals: {}'.format(interval ))
+            if self.verbose > 1:
+                print('\nPotential intervals: {}'.format(interval))
             interval = np.append(interval, pot_samples)
 
         else:
@@ -430,14 +434,13 @@ class Batch_Generator(object):
                 inf_bat_sz = np.unique(np.diff(np.array(predef_interval[0:-1])))
                 self.last_bat_sz = predef_interval[-1] - predef_interval[-2]
 
-            if len(inf_bat_sz)>1:
+            if len(inf_bat_sz) > 1:
                 raise ValueError("predefined array must have constant steps")
             if inf_bat_sz != self.batch_size:
                 raise ValueError("Inferred batch size from predefined array is not equal to batch size defined")
 
-        #nterval = np.unique(interval) 
-
-        if self.verbose>1:
+        # nterval = np.unique(interval)
+        if self.verbose > 1:
             print('\nActual interval: {} '.format(interval))
 
         if trim_last_batch:
@@ -445,9 +448,11 @@ class Batch_Generator(object):
         else:
             no_of_batches = len(interval)-1 
 
-        if no_of_batches ==0: no_of_batches=1
+        if no_of_batches == 0:
+            no_of_batches = 1
 
-        if self.verbose>0: print('\nNumber of batches are {} '.format(no_of_batches))
+        if self.verbose > 0:
+            print('\nNumber of batches are {} '.format(no_of_batches))
         self.no_of_batches = no_of_batches
 
         # code for generator
@@ -460,7 +465,7 @@ class Batch_Generator(object):
                 x_batch = x_wins[st:en, :, :]
                 y_batch = y_wins[st:en]
 
-                gen_i +=1
+                gen_i += 1
 
                 yield x_batch, y_batch
 
@@ -468,7 +473,8 @@ class Batch_Generator(object):
 def check_and_initiate_batch(generator_object, _batch_generator, verbose=1):
     x_batch, mask_y_batch = next(_batch_generator)
     y_of_interest = mask_y_batch[np.where(mask_y_batch > 0.0)]
-    if verbose > 0: print(x_batch.shape, mask_y_batch.shape, y_of_interest.shape)
+    if verbose > 0:
+        print(x_batch.shape, mask_y_batch.shape, y_of_interest.shape)
 
     no_of_batches = generator_object.no_of_batches
     batch_size = x_batch.shape[0]
@@ -477,7 +483,7 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1):
     out_features = mask_y_batch.shape[1]
 
     if hasattr(generator_object, 'last_bat_sz'):
-        #batch size is variable so one array of all batches can not be constructed
+        # batch size is variable so one array of all batches can not be constructed
         x_batches = [None]*no_of_batches
         y_batches = [None]*no_of_batches
     else:
@@ -492,7 +498,8 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1):
     for i in range(out_features):
         total_bact_samples[i] = 0
 
-    if verbose>0: print('batch ', 'Non zeros')
+    if verbose > 0:
+        print('batch ', 'Non zeros')
     for i in range(no_of_batches):
 
         mask_x_batch, mask_y_batch = next(_batch_generator)
@@ -520,7 +527,8 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1):
                 raise ValueError('At minibatch {} exists where all labels are missing'.format(i))
 
         print('')
-    if verbose>0: print('total observations: ', total_bact_samples)
+    if verbose > 0:
+        print('total observations: ', total_bact_samples)
     return x_batches, y_batches
 
 
@@ -538,7 +546,7 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
         if len(np.unique(np.diff(event_intvl))) > 1:
             args['trim_last_batch'] = False
 
-        event_generator = Batch_Generator(data, batch_size, args, verbose=verbosity)
+        event_generator = BatchGenerator(data, batch_size, args, verbose=verbosity)
         _gen = event_generator.many_to_one(predef_interval=event_intvl)
 
         x, y = check_and_initiate_batch(event_generator, _gen, verbosity)
@@ -552,6 +560,7 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
             print(x_batch.shape, y_batch.shape)
 
     return x_batches, y_batches
+
 
 def nan_to_num(array, outs, replace_with=0.0):
     array = array.copy()
@@ -583,7 +592,8 @@ def maybe_create_path(prefix=None, path=None):
         save_dir = date + '_' + stunde + str(minute)
         model_dir = os.path.join(os.getcwd(), "models")
 
-        if prefix: model_dir = os.path.join(model_dir, prefix)
+        if prefix:
+            model_dir = os.path.join(model_dir, prefix)
 
         save_dir = os.path.join(model_dir, save_dir)
     else:
