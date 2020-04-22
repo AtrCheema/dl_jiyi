@@ -470,7 +470,7 @@ class BatchGenerator(object):
                 yield x_batch, y_batch
 
 
-def check_and_initiate_batch(generator_object, _batch_generator, verbose=1):
+def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, raise_error=True):
     x_batch, mask_y_batch = next(_batch_generator)
     y_of_interest = mask_y_batch[np.where(mask_y_batch > 0.0)]
     if verbose > 0:
@@ -524,7 +524,8 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1):
             elif verbose > 0:
                 print(non_zeros, end=' ')
             if non_zeros < 1:
-                raise ValueError('At minibatch {} exists where all labels are missing'.format(i))
+                if raise_error:
+                    raise ValueError('At minibatch {} exists where all labels are missing'.format(i))
 
         print('')
     if verbose > 0:
@@ -532,7 +533,7 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1):
     return x_batches, y_batches
 
 
-def generate_event_based_batches(data, batch_size, args, predef_intervals, verbosity=1):
+def generate_event_based_batches(data, batch_size, args, predef_intervals, verbosity=1, raise_error=True):
     args = deepcopy(args)
     events = len(predef_intervals)
 
@@ -549,7 +550,7 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
         event_generator = BatchGenerator(data, batch_size, args, verbose=verbosity)
         _gen = event_generator.many_to_one(predef_interval=event_intvl)
 
-        x, y = check_and_initiate_batch(event_generator, _gen, verbosity)
+        x, y = check_and_initiate_batch(event_generator, _gen, verbosity, raise_error=raise_error)
 
         for x_batch, y_batch in zip(x, y):
             x_batches.append(x_batch)
@@ -603,3 +604,28 @@ def maybe_create_path(prefix=None, path=None):
         os.makedirs(save_dir)
 
     return save_dir
+
+
+def check_min_loss(epoch_loss_array, batch_loss_array, _epoch, func1, func, _ps, _save_fg, to_save=None):
+    current_epoch_loss = np.mean(batch_loss_array)
+
+    if len(epoch_loss_array) > 1:
+        min_loss = func1(epoch_loss_array)
+    else:
+        min_loss = current_epoch_loss
+
+    min_loss_epoch = None
+
+    if func(current_epoch_loss, min_loss):
+        min_loss_epoch = _epoch
+        _ps = _ps + "    {:10.8f} ".format(current_epoch_loss)
+
+        if to_save is not None:
+            _save_fg = True
+            # saver.save(session, save_path = save_path,  global_step=epoch)
+    else:
+        _ps = _ps + "              "
+
+    epoch_loss_array.append(current_epoch_loss)
+
+    return _ps, min_loss_epoch, _save_fg
