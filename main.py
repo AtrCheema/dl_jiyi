@@ -4,11 +4,9 @@ from neural_net import NeuralNetwork as Model
 from utils import generate_event_based_batches
 from utils import nan_to_num, maybe_create_path
 from utils import normalize_data
-# from post_processing import post_process
+from post_processing import post_process
 
 import numpy as np
-import os
-import pandas as pd
 from collections import OrderedDict
 
 np.printoptions(precision=5)
@@ -35,7 +33,7 @@ data_conf['out_features'] = out_features
 data_conf['lookback'] = lookback
 data_conf['normalize'] = True
 
-
+scalers = None
 if data_conf['normalize']:
     dataset, scalers = normalize_data(dataset)
 
@@ -84,7 +82,7 @@ nn_conf['lookback'] = lookback
 nn_conf['input_features'] = len(in_features)
 nn_conf['output_features'] = len(out_features)
 nn_conf['batch_size'] = BatchSize
-nn_conf['monitor'] = ['mse', 'nse', 'kge', 'r2']
+data_conf['monitor'] = ['mse', 'nse', 'kge', 'r2']
 
 # # initiate model model
 model = Model(nn_conf, verbose=verbosity)
@@ -95,8 +93,15 @@ model.build_nn()
 # # train model
 saved_epochs, train_losses, val_losses = model.train(train_batches=[train_x, train_y],
                                                      val_batches=[test_x, test_y],
-                                                     monitor=nn_conf['monitor'])
-# post_process(data_conf=data_conf,
-#              x_batches, y_batches, test_dataset,
-#                  model, saved_epochs, _path, all_scalers,  full_args,
-#                  losses, verbose=1)
+                                                     monitor=data_conf['monitor'])
+post_process(data_conf=data_conf,
+             x_batches=train_x,
+             y_batches=train_y,
+             test_dataset=dataset,
+             model=model,
+             saved_epochs=saved_epochs,
+             _path=_path,
+             scalers=scalers,
+             full_args=train_args,
+             losses=[train_losses, val_losses],
+             verbose=verbosity)

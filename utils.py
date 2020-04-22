@@ -5,6 +5,11 @@ import random
 import datetime
 from copy import deepcopy
 from collections import OrderedDict
+from shutil import copyfile
+from TSErrors import FindErrors
+import json
+import seaborn as sns
+import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 plt.rcParams["font.family"] = "Times New Roman"
@@ -39,7 +44,7 @@ colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
           'Training NSE': np.array([0.13778617, 0.06228198, 0.33547859]),
           'Validation NSE': np.array([0.96707953, 0.46268314, 0.45772886]),
           'aac': np.array([0.17221373, 0.53023578, 0.96788307]),
-          'blaTEM': np.array([0.49902624, 0.93245149, 0.12125226]),
+          'blaTEM_coppml': np.array([0.49902624, 0.93245149, 0.12125226]),
           'Total_otus': np.array([0.92875036, 0.09364162, 0.33348078]),
           'Total_args': np.array([0.93950089, 0.64582256, 0.16928645]),
           'tetx': np.array([0.06802773, 0.46382623, 0.49007703]),
@@ -47,7 +52,8 @@ colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
           'otu_5575': np.array([0.54829269, 0.15069842, 0.06147751]),
           'sul1': np.array([0.26900851, 0.96337978, 0.94641933]),
           'otu_273': np.array([0.95896577, 0.58394066, 0.04189788]),
-          '16s': np.array([0.17877267, 0.78893675, 0.92613355])
+          '16s': np.array([0.17877267, 0.78893675, 0.92613355]),
+          'true': np.array([0.49902624, 0.93245149, 0.12125226]),
           }
 
 
@@ -68,7 +74,7 @@ labels = {
     "atm_p": "Atmospheric Pressure",
 
     "aac": "aac(6')-lb-cr",
-    "blaTEM": "blaTEM",
+    "blaTEM_coppml": "blaTEM",
     "sul1": "sul1",
     "tetx": "tetX",
     "Total_args": "Total ARGs",
@@ -95,7 +101,7 @@ y_labels = {
     "atm_p": "hPa",
 
     "aac": "Copies per mL",
-    "blaTEM": "copies per mL",
+    "blaTEM_coppml": "copies per mL",
     "sul1": "copies per mL",
     "tetx": "copies per mL",
     "Total_args": "Copies per mL",
@@ -620,7 +626,7 @@ def check_min_loss(epoch_loss_array, batch_loss_array, _epoch, func1, func, _ps,
 
     if func(current_epoch_loss, min_loss):
         min_loss_epoch = _epoch
-        _ps = _ps + "    {:10.8f} ".format(current_epoch_loss)
+        _ps = _ps + "    {:10.5f} ".format(current_epoch_loss)
 
         if to_save is not None:
             _save_fg = True
@@ -647,3 +653,102 @@ def normalize_data(dataset):
         all_scalers[str(dat) + '_scaler'] = val_scaler
 
     return dataset_n, all_scalers
+
+
+def plot_loss(train_loss_array, test_loss_array, _name, _path):
+    _fig, (ax1) = plt.subplots(1, sharex='all')
+    _fig.set_figheight(6)
+
+    process_axis(ax1, train_loss_array, '-', label='Training ' + _name, leg_pos="upper left", leg_fs=12)
+
+    process_axis(ax1, test_loss_array, '-', label='Validation ' + _name, leg_pos="upper left", leg_fs=12, y_label=_name,
+                 x_label="Epochs", xtp_c='no', ytp_c='no')
+    plt.subplots_adjust(wspace=0.05, hspace=0.01)
+    plt.savefig(_path + "/loss_" + _name, dpi=300, bbox_inches='tight')
+    plt.close(_fig)
+
+
+def copy_check_points(_saved_epochs, _path):
+    ch_points_to_copy = np.unique(list(_saved_epochs.values()))
+    cp_to_copy = ch_points_to_copy[ch_points_to_copy != 0]  # removing zeros
+    cp_to_copy = cp_to_copy[cp_to_copy != 1]
+    cp_copied = []
+    for chpt in cp_to_copy:
+        data_file = os.path.join(os.getcwd(), "check_points-" + str(chpt) + ".data-00000-of-00001")
+        if os.path.exists(data_file):
+            cp_copied.append(chpt)
+            copyfile(data_file, os.path.join(_path, "check_points-" + str(chpt) + ".data-00000-of-00001"))
+            idx_file = os.path.join(os.getcwd(), "check_points-" + str(chpt) + ".index")
+            copyfile(idx_file, os.path.join(_path, "check_points-" + str(chpt) + ".index"))
+            meta_file = os.path.join(os.getcwd(), "check_points-" + str(chpt) + ".meta")
+            copyfile(meta_file, os.path.join(_path, "check_points-" + str(chpt) + ".meta"))
+
+    return cp_copied
+
+
+def get_errors(true_data, predicted_data, monitor):
+    errors = {}
+    _er = FindErrors(true_data.reshape(-1, ), predicted_data.reshape(-1, ))
+    all_errors = _er.all_methods
+    all_errors.remove('mgd')
+    all_errors.remove('mpd')
+    all_errors.remove('msle')
+    for err in all_errors:
+        errors[err] = float(getattr(_er, err)())
+
+    for er_name in monitor:
+        print(er_name, errors[er_name])
+    return errors
+
+
+def save_config_file(config, _path):
+    config_file = _path + "/cofig.json"
+    with open(config_file, 'w') as fp:
+        json.dump(config, fp, sort_keys=True, indent=4)
+
+
+def plot_scatter(true, pred, _name, searborn=True):
+    if searborn:
+        regplot_using_searborn(true, pred, _name)
+    else:
+        fig, ax = plt.subplots(1)
+        set_fig_dim(fig, 8, 6)
+
+        ax.scatter(true, pred)
+        ax.set_ylabel('Predicted ', fontsize=14, color='k')
+        ax.set_xlabel('Observed ', fontsize=14, color='k')
+        ax.tick_params(axis="x", which='major', labelsize=12, colors='k')
+        ax.tick_params(axis="y", which='major', labelsize=12, colors='k')
+        plt.savefig(_name, dpi=300, bbox_inches='tight')
+        # plt.show()
+        plt.close(fig)
+
+
+def regplot_using_searborn(true, pred, _name):
+    # https://seaborn.pydata.org/generated/seaborn.regplot.html
+    sns.regplot(x=true, y=pred, color="g")
+    plt.savefig(_name, dpi=300, bbox_inches='tight')
+    plt.close('all')
+
+
+def plot_bact_points(true, pred, _name):
+    fig, ax = plt.subplots(1)
+    set_fig_dim(fig, 14, 6)
+    ax.set_title("Model Performance", fontsize=18)
+
+    process_axis(ax, true, style='b.', c='b', ms=5)
+    process_axis(ax, true, style='b-', c='b', ms=2, label="True", leg_fs=12, leg_ms=4)
+    process_axis(ax, pred, style='r*', c='r', ms=6, y_label="MPN", yl_fs=14)
+    process_axis(ax, pred, style='r-', c='r', ms=2, label='Predicted', leg_fs=12, leg_ms=4, y_label="MPN", yl_fs=14,
+                 x_label="No. of Observations", xl_fs=14)
+    plt.savefig(_name, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
+
+def get_pred_where_obs_available(_true, _pred):
+    _true_idx, = np.where(_true > 0.0)  # because np.where will sprout a tuple
+
+    y_pred_avail_only = _pred[_true_idx]
+    y_true_avail_only = _true[_true_idx]
+
+    return y_true_avail_only, y_pred_avail_only

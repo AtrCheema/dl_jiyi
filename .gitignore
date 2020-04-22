@@ -7,6 +7,12 @@
 *.xlsx
 *.ipynb
 
+
+# more files to ignore
+*.png
+*.jpg
+*.jpeg
+
 #junk files
 read_data.py
 

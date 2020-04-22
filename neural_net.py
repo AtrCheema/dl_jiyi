@@ -234,3 +234,45 @@ class NeuralNetwork(object):
             saved_epochs1[k] = int(f2(val_epoch_losses[error]))
 
         return saved_epochs1, train_epoch_losses, val_epoch_losses
+
+    def run_check_point(self, check_point, x_batches, y_batches, data_set, scalers):
+
+        n_outs = self.nn_conf['output_features']
+
+        with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
+            self.saver.restore(sess, check_point)
+
+            # evaluating model on training data
+            test_iterations = len(x_batches)
+            print(test_iterations, 'iter')
+
+            x_data = np.full((test_iterations * self.nn_conf['batch_size'], data_set.shape[1] + 1), np.nan)
+
+            test_y_pred = np.full((test_iterations * self.nn_conf['batch_size'], n_outs), np.nan)
+            test_y_true = np.full((test_iterations * self.nn_conf['batch_size'], n_outs), np.nan)
+            st = 0
+            en = self.nn_conf['batch_size']
+            for i in range(test_iterations):
+                test_x_batch, mask_y_batch = x_batches[i], y_batches[i]
+                # y_of_interest = mask_y_batch[np.where(mask_y_batch>0.0)].reshape(-1,1)
+
+                y_pred = sess.run(self.full_outputs,
+                                  feed_dict={self.x_ph: test_x_batch, self.mask_ph: mask_y_batch.reshape(-1, 1)})
+
+                y_scaler = scalers[str(list(scalers.keys())[-1])]
+                y_pred_un = y_scaler.inverse_transform(y_pred.reshape(-1, n_outs))
+                mask_y_batch_un = y_scaler.inverse_transform(mask_y_batch.reshape(-1, n_outs))
+
+                test_y_pred[st:en, :] = y_pred_un.reshape(-1, n_outs)
+                test_y_true[st:en, :] = mask_y_batch_un.reshape(-1, n_outs)
+
+                for dat in range(self.nn_conf['input_features']):
+                    value = test_x_batch[:, -1, dat].reshape(-1, 1)
+                    val_scaler = scalers[str(dat) + '_scaler']
+                    new_value = val_scaler.inverse_transform(value.reshape(-1, 1))
+                    x_data[st:en, dat] = new_value.reshape(-1, )
+
+                st += self.nn_conf['batch_size']
+                en += self.nn_conf['batch_size']
+
+        return x_data, test_y_pred, test_y_true
