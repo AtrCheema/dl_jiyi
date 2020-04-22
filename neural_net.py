@@ -25,13 +25,13 @@ def reset_graph(seed=2):
     return
 
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.7)
 
 
 class NeuralNetwork(object):
 
-    def __init__(self, nn_config, verbose=1):
-        self.nn_conf = nn_config
+    def __init__(self, nn_config, verbosity=1):
+        self.nn_config = nn_config
         self.x_ph = None
         self.mask_ph = None
         self.obs_y_ph = None
@@ -39,55 +39,56 @@ class NeuralNetwork(object):
         self.training_op = None
         self.loss = None
         self.saver = None
-        self.config = {}
-        self.verbose = verbose
+        self.saved_epochs = None
+        self.losses = None
+        self.verbose = verbosity
 
     def build_nn(self):
 
         reset_graph()
 
-        n_steps = self.nn_conf['lookback']
+        n_steps = self.nn_config['lookback']
 
-        self.x_ph = tf.compat.v1.placeholder(tf.float32, [None, n_steps, self.nn_conf['input_features']],
-                                             name='x_ph')  # self.nn_conf['batch_size']
+        self.x_ph = tf.compat.v1.placeholder(tf.float32, [None, n_steps, self.nn_config['input_features']],
+                                             name='x_ph')  # self.nn_config['batch_size']
         self.obs_y_ph = tf.compat.v1.placeholder(tf.float32, [None, 1], name='obs_y_ph')
-        self.mask_ph = tf.compat.v1.placeholder(tf.float32, [None, 1], name='mask_ph')  # self.nn_conf['batch_size']
+        self.mask_ph = tf.compat.v1.placeholder(tf.float32, [None, 1], name='mask_ph')  # self.nn_config['batch_size']
 
-        cell = LSTMCell(units=self.nn_conf['lstm_units'], activation=self.nn_conf['lstm_activation'])
+        cell = LSTMCell(units=self.nn_config['lstm_units'], activation=self.nn_config['lstm_activation'])
 
-        if self.nn_conf['method'] == 'dynamic_rnn':
+        if self.nn_config['method'] == 'dynamic_rnn':
             rnn_outputs1, states = dynamic_rnn(cell, self.x_ph, dtype=tf.float32)
-            rnn_outputs = tf.reshape(rnn_outputs1[:, -1, :], [-1, self.nn_conf['lstm_units']])
+            rnn_outputs = tf.reshape(rnn_outputs1[:, -1, :], [-1, self.nn_config['lstm_units']])
 
-        elif self.nn_conf['method'] == 'keras_lstm_layer':
-            rnn_outputs = LSTM(self.nn_conf['lstm_units'],
-                               activation=self.nn_conf['lstm_activation'],
-                               input_shape=(n_steps, self.nn_conf['input_features']))(self.x_ph)
+        elif self.nn_config['method'] == 'keras_lstm_layer':
+            rnn_outputs = LSTM(self.nn_config['lstm_units'],
+                               activation=self.nn_config['lstm_activation'],
+                               input_shape=(n_steps, self.nn_config['input_features']))(self.x_ph)
 
         else:
             rnn_layer = RNN(cell)
             rnn_outputs = rnn_layer(self.x_ph)  # [batch_size, neurons]
             if self.verbose > 0:
                 print(rnn_outputs.shape, 'before reshaping', K.eval(tf.rank(rnn_outputs)))
-            rnn_outputs = tf.reshape(rnn_outputs[:, :], [-1, self.nn_conf['lstm_units']])
+            rnn_outputs = tf.reshape(rnn_outputs[:, :], [-1, self.nn_config['lstm_units']])
             if self.verbose > 0:
                 print(rnn_outputs.shape, 'after reshaping', K.eval(tf.rank(rnn_outputs)))
 
-        if self.nn_conf['batch_norm']:
+        if self.nn_config['batch_norm']:
             rnn_outputs3 = BatchNormalization()(rnn_outputs)
             rnn_outputs = Activation('relu')(rnn_outputs3)
 
-        if self.nn_conf['dropout'] is not None:
-            rnn_outputs = Dropout(self.nn_conf['dropout'])(rnn_outputs)
+        if self.nn_config['dropout'] is not None:
+            rnn_outputs = Dropout(self.nn_config['dropout'])(rnn_outputs)
 
         if self.verbose > 0:
             print(rnn_outputs.shape, "dynamic_rnn/RNN outputs shape", rnn_outputs.get_shape())
 
-        leaky_layer = LeakyDense2D(units=self.nn_conf['output_features'], activation=tf.nn.elu, leaky_inputs=True,
+        leaky_layer = LeakyDense2D(units=self.nn_config['output_features'], activation=tf.nn.elu, leaky_inputs=True,
                                    mask_array=self.mask_ph, verbose=self.verbose)  # tf.nn.elu
         dense_outputs = leaky_layer(rnn_outputs)
 
-        self.nn_conf['dense_activation'] = leaky_layer.activation.__name__
+        self.nn_config['dense_activation'] = leaky_layer.activation.__name__
 
         outputs = tf.reshape(dense_outputs, [-1, 1])  # this is because observations will also be flattened
         self.full_outputs = leaky_layer.full_outputs
@@ -96,11 +97,12 @@ class NeuralNetwork(object):
             print(outputs.shape, 'shape outputs')
 
         self.loss = tf.reduce_mean(tf.square(outputs - self.obs_y_ph))
-        optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.nn_conf['lr'])
+        optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.nn_config['lr'])
         self.training_op = optimizer.minimize(self.loss)
-        self.saver = tf.compat.v1.train.Saver(max_to_keep=self.nn_conf['n_epochs'])
 
     def train(self, train_batches, val_batches, monitor):
+
+        saver = tf.compat.v1.train.Saver(max_to_keep=self.nn_config['n_epochs'])
 
         train_x = train_batches[0]
         train_y = train_batches[1]
@@ -127,7 +129,7 @@ class NeuralNetwork(object):
 
         save_path = os.path.join(os.getcwd(), 'check_points')
 
-        st_t, self.config['start_time'] = time.time(), time.asctime()
+        st_t, self.nn_config['start_time'] = time.time(), time.asctime()
 
         m = [m for m in monitor for _ in range(2)]
         header = ['\t' + i+'_'+j for i, j in zip(m, ['train', 'test']*int(len(m)/2))]
@@ -140,7 +142,7 @@ class NeuralNetwork(object):
             writer = tf.compat.v1.summary.FileWriter('./graph/leaky_lstm', sess.graph)
             init.run()
 
-            for epoch in range(self.nn_conf['n_epochs']):
+            for epoch in range(self.nn_config['n_epochs']):
 
                 train_batch_losses = OrderedDict({key: [] for key in monitor})
 
@@ -211,47 +213,54 @@ class NeuralNetwork(object):
                                                     ps, save_fg, to_save)
 
                 if save_fg:
-                    self.saver.save(sess, save_path=save_path,  global_step=epoch)
+                    saver.save(sess, save_path=save_path,  global_step=epoch)
 
                 print(epoch, ps)
 
-                if epoch > (self.nn_conf['n_epochs']-2):
-                    self.saver.save(sess, save_path=save_path,  global_step=epoch)
+                if epoch > (self.nn_config['n_epochs']-2):
+                    saver.save(sess, save_path=save_path,  global_step=epoch)
 
-        en_t, self.config['end_time'] = time.time(), time.asctime()
-        self.train_time = (en_t - st_t) / 60.0 / 60.0
-        print('totoal time taken {}'.format(self.train_time))
+        en_t, self.nn_config['end_time'] = time.time(), time.asctime()
+        train_time = (en_t - st_t) / 60.0 / 60.0
+        self.nn_config['train_duration'] = int(train_time)
+        print('totoal time taken {}'.format(train_time))
 
-        saved_epochs1 = {}
+        saved_epochs = {}
         for error in train_epoch_losses.keys():
             k = funcs[error][3] + '_train_' + error + '_epoch'
             f2 = funcs[error][2]
-            saved_epochs1[k] = int(f2(train_epoch_losses[error]))
+            saved_epochs[k] = int(f2(train_epoch_losses[error]))
 
         for error in val_epoch_losses.keys():
             k = funcs[error][3] + '_test_' + error + '_epoch'
             f2 = funcs[error][2]
-            saved_epochs1[k] = int(f2(val_epoch_losses[error]))
+            saved_epochs[k] = int(f2(val_epoch_losses[error]))
 
-        return saved_epochs1, train_epoch_losses, val_epoch_losses
+        self.saved_epochs = saved_epochs
+        self.losses = {'train_losses': train_epoch_losses,
+                       'val_losses': train_epoch_losses}
+        return saved_epochs, train_epoch_losses, val_epoch_losses
 
     def run_check_point(self, check_point, x_batches, y_batches, data_set, scalers):
 
-        n_outs = self.nn_conf['output_features']
+        n_outs = self.nn_config['output_features']
 
         with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
-            self.saver.restore(sess, check_point)
+
+            saver = tf.compat.v1.train.Saver()
+
+            saver.restore(sess, check_point)
 
             # evaluating model on training data
             test_iterations = len(x_batches)
             print(test_iterations, 'iter')
 
-            x_data = np.full((test_iterations * self.nn_conf['batch_size'], data_set.shape[1] + 1), np.nan)
+            x_data = np.full((test_iterations * self.nn_config['batch_size'], data_set.shape[1] + 1), np.nan)
 
-            test_y_pred = np.full((test_iterations * self.nn_conf['batch_size'], n_outs), np.nan)
-            test_y_true = np.full((test_iterations * self.nn_conf['batch_size'], n_outs), np.nan)
+            test_y_pred = np.full((test_iterations * self.nn_config['batch_size'], n_outs), np.nan)
+            test_y_true = np.full((test_iterations * self.nn_config['batch_size'], n_outs), np.nan)
             st = 0
-            en = self.nn_conf['batch_size']
+            en = self.nn_config['batch_size']
             for i in range(test_iterations):
                 test_x_batch, mask_y_batch = x_batches[i], y_batches[i]
                 # y_of_interest = mask_y_batch[np.where(mask_y_batch>0.0)].reshape(-1,1)
@@ -266,13 +275,13 @@ class NeuralNetwork(object):
                 test_y_pred[st:en, :] = y_pred_un.reshape(-1, n_outs)
                 test_y_true[st:en, :] = mask_y_batch_un.reshape(-1, n_outs)
 
-                for dat in range(self.nn_conf['input_features']):
+                for dat in range(self.nn_config['input_features']):
                     value = test_x_batch[:, -1, dat].reshape(-1, 1)
                     val_scaler = scalers[str(dat) + '_scaler']
                     new_value = val_scaler.inverse_transform(value.reshape(-1, 1))
                     x_data[st:en, dat] = new_value.reshape(-1, )
 
-                st += self.nn_conf['batch_size']
-                en += self.nn_conf['batch_size']
+                st += self.nn_config['batch_size']
+                en += self.nn_config['batch_size']
 
         return x_data, test_y_pred, test_y_true

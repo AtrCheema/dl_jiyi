@@ -1,107 +1,208 @@
 
 from data_preparation import DATA
-from neural_net import NeuralNetwork as Model
+from neural_net import NeuralNetwork as nn
 from utils import generate_event_based_batches
 from utils import nan_to_num, maybe_create_path
 from utils import normalize_data
-from post_processing import post_process
+from utils import validate_dictionary
+from utils import save_config_file
+from utils import plot_loss
+from utils import copy_check_points
+from post_processing import make_predictions
 
+import os
 import numpy as np
 from collections import OrderedDict
+import json
+import pandas as pd
 
 np.printoptions(precision=5)
 
-data_obj = DATA(freq='30min')
-all_data = data_obj.df
+DATA_CONF_KEYS = ['in_features', 'out_features', 'normalize', 'freq', 'monitor']
 
-in_features = ['pcp_mm', 'wat_temp_c', 'sal_psu', 'wind_speed_mps']
-out_features = ['blaTEM_coppml']
+NN_CONF_KEYS = ['lstm_units', 'lr', 'method', 'dropout', 'batch_norm', 'lstm_activation',
+                'n_epochs', 'lookback', 'input_features', 'output_features', 'batch_size']
 
-df = all_data[in_features].copy()
-for out in out_features:
-    df[out] = all_data[out].copy()
-print(df.shape)
-df.head()
+INTERVALS_KEYS = ['train_intervals', 'test_intervals', 'all_intervals']
 
-dataset = nan_to_num(df.values, len(out_features), replace_with=0.0)
+ARGS_KEYS = ['train_args', 'test_args', 'all_args']
 
-data_conf = OrderedDict()
-lookback = 8
-BatchSize = 24
-data_conf['in_features'] = in_features
-data_conf['out_features'] = out_features
-data_conf['lookback'] = lookback
-data_conf['normalize'] = True
 
-scalers = None
-if data_conf['normalize']:
-    dataset, scalers = normalize_data(dataset)
+class Model(nn):
 
-_path = maybe_create_path()
-verbosity = 1
+    def __init__(self, data_config,
+                 nn_config,
+                 args,
+                 intervals,
+                 path=None,   # if specified, and if it exists, will not be created then
+                 verbosity=1):
 
-train_args = {'lookback': lookback,
-              'in_features': len(in_features),
-              'out_features': len(out_features),
-              'future_y_val': 1,
-              'trim_last_batch': True
-              }
+        self.data_config = data_config
+        self.nn_config = nn_config
+        self.args = args
+        self.intervals = intervals  # dictionary
+        self.verbosity = verbosity
+        self._validate_input()
+        self.batches = {}
+        self.path = maybe_create_path(path=path)
 
-train_intervals = [np.array([i for i in range(0, 50, BatchSize)]),
-                   np.array([i for i in range(51, 91, BatchSize)]),
+        super(Model, self).__init__(nn_config=nn_config, verbosity=verbosity)
 
-                   np.array([i for i in range(82, 197, BatchSize)]),
+    def pre_process_data(self):
+        in_features = self.data_config['in_features']
+        out_features = self.data_config['out_features']
 
-                   np.array([i for i in range(245, 406, BatchSize)]),
-                   np.array([i for i in range(440, 524, BatchSize)]),
-                   np.array([i for i in range(540, 610, BatchSize)])]
-train_x, train_y = generate_event_based_batches(dataset, BatchSize, train_args, train_intervals, 2)
+        data_obj = DATA(freq=self.data_config['freq'])
+        all_data = data_obj.df
 
-test_intervals = [np.array([i for i in range(737, 780, BatchSize)]),
-                  np.array([i for i in range(900, 1177, BatchSize)])
-                  ]
-test_x, test_y = generate_event_based_batches(dataset, BatchSize, train_args, test_intervals, 2)
+        # copying required data
+        df = all_data[in_features].copy()
+        for out in out_features:
+            df[out] = all_data[out].copy()
+        print('shape of whole dataset', df.shape)
 
-test_intervals = [np.array([i for i in range(0, 780, BatchSize)])]
-full_x, full_y = generate_event_based_batches(dataset, BatchSize, train_args, test_intervals, 0, raise_error=False)
+        dataset = nan_to_num(df.values, len(out_features), replace_with=0.0)
 
-nn_conf = OrderedDict()
-lstm_units = 100
-lr = 1e-5
-dropout = 0.2
-act_f = 'relu'
-nn_conf['lstm_units'] = int(lstm_units)
-nn_conf['lr'] = lr
-nn_conf['method'] = 'keras_lstm_layer'
-nn_conf['dropout'] = dropout
-nn_conf['batch_norm'] = False
-nn_conf['lstm_activation'] = None if nn_conf['batch_norm'] else act_f
-nn_conf['n_epochs'] = 10
+        scalers = None
+        if self.data_config['normalize']:
+            dataset, scalers = normalize_data(dataset)
 
-nn_conf['lookback'] = lookback
-nn_conf['input_features'] = len(in_features)
-nn_conf['output_features'] = len(out_features)
-nn_conf['batch_size'] = BatchSize
-data_conf['monitor'] = ['mse', 'nse', 'kge', 'r2']
+        return dataset, scalers
 
-# # initiate model model
-model = Model(nn_conf, verbose=verbosity)
+    def get_batches(self, dataset):
 
-# build model
-model.build_nn()
+        train_x, train_y = generate_event_based_batches(dataset, self.nn_config['batch_size'], self.args['train_args'],
+                                                        self.intervals['train_intervals'], 2)
 
-# # train model
-saved_epochs, train_losses, val_losses = model.train(train_batches=[train_x, train_y],
-                                                     val_batches=[test_x, test_y],
-                                                     monitor=data_conf['monitor'])
-post_process(data_conf=data_conf,
-             x_batches=train_x,
-             y_batches=train_y,
-             test_dataset=dataset,
-             model=model,
-             saved_epochs=saved_epochs,
-             _path=_path,
-             scalers=scalers,
-             full_args=train_args,
-             losses=[train_losses, val_losses],
-             verbose=verbosity)
+        test_x, test_y = generate_event_based_batches(dataset, self.nn_config['batch_size'], self.args['train_args'],
+                                                      self.intervals['test_intervals'], 2)
+
+        all_x, all_y = generate_event_based_batches(dataset, self.nn_config['batch_size'], self.args['train_args'],
+                                                    self.intervals['all_intervals'], self.verbosity-1,
+                                                    raise_error=False)
+
+        self.batches['train_x'] = train_x
+        self.batches['train_y'] = train_y
+        self.batches['test_x'] = test_x
+        self.batches['test_y'] = test_y
+        self.batches['all_x'] = all_x
+        self.batches['all_y'] = all_y
+        return
+
+    def build_and_train(self):
+
+        dataset, _ = self.pre_process_data()
+
+        self.get_batches(dataset)
+
+        # build neural network
+        self.build_nn()
+
+        # # train model
+        self.train(train_batches=[self.batches['train_x'], self.batches['train_y']],
+                   val_batches=[self.batches['test_x'], self.batches['test_y']],
+                   monitor=self.data_config['monitor'])
+
+        self.handle_losses()
+
+        saved_unique_cp = copy_check_points(self.saved_epochs, self.path)
+        self.data_config['saved_unique_cp'] = saved_unique_cp
+
+        return self.saved_epochs, self.losses
+
+    def post_process(self, **kwargs):
+
+        dataset, scalers = self.pre_process_data()
+
+        epochs_to_evaluate = self.data_config['saved_unique_cp']
+        if 'from_config' in kwargs:
+            self.get_batches(dataset)
+
+        errors, neg_predictions = make_predictions(data_config=self.data_config,
+                                                   x_batches=self.batches['train_x'],
+                                                   y_batches=self.batches['train_y'],
+                                                   test_dataset=dataset,
+                                                   model=self,
+                                                   epochs_to_evaluate=epochs_to_evaluate,
+                                                   _path=self.path,
+                                                   scalers=scalers,
+                                                   full_args=self.args['train_args'],
+                                                   verbose=self.verbosity)
+
+        self.save_config(errors=errors, neg_predictions=neg_predictions)
+
+        return errors, neg_predictions
+
+    def save_config(self, errors, neg_predictions):
+
+        config = OrderedDict()
+        config['comment'] = 'use point source pollutant data along with best model from grid search'
+        config['nn_config'] = self.nn_config
+        config['data_config'] = self.data_config
+        config['test_errors'] = errors
+        config['test_sample_idx'] = 'test_idx'
+        config['start_time'] = self.nn_config['start_time'] if 'start_time' in self.nn_config else " "
+        config['end_time'] = self.nn_config['end_time'] if 'end_time' in self.nn_config else " "
+        config["saved_epochs"] = self.saved_epochs
+        config['intervals'] = self.intervals
+        config['args'] = self.args
+        config['train_time'] = self.nn_config['train_duration'] if 'train_duration' in self.nn_config else " "
+        config['final_comment'] = """ """
+        config['negative_predictions'] = neg_predictions
+
+        save_config_file(config, self.path)
+        return config
+
+    def handle_losses(self):
+
+        if self.losses is not None:
+            for loss_type, loss in self.losses.items():
+                pd.DataFrame.from_dict(loss).to_csv(self.path + '/' + loss_type + '.txt')
+
+            # plot losses
+            for er in self.data_config['monitor']:
+                plot_loss(self.losses['train_losses'][er], self.losses['val_losses'][er], er, self.path)
+        return
+
+    @classmethod
+    def from_config(cls, _path):
+
+        config_file = os.path.join(_path, 'config.json')
+        with open(config_file, 'r') as fp:
+            data = json.load(fp)
+
+        intervals = data['intervals']
+        # intervals = {}
+        # for k in INTERVALS_KEYS:
+        #     intervals[k] = data[k]
+
+        args = data['args']
+        # args = {}
+        # for k in ARGS_KEYS:
+        #     args[k] = data[k]
+
+        nn_config = data['nn_config']
+        # nn_conf = {}
+        # for k in NN_CONF_KEYS:
+        #     nn_conf[k] = data[k]
+
+        data_config = data['data_config']
+        # data_conf = {}
+        # for k in DATA_CONF_KEYS:
+        #     data_conf[k] = data[k]
+
+        return cls(data_config=data_config,
+                   nn_config=nn_config,
+                   args=args,
+                   intervals=intervals,
+                   verbosity=1)
+
+    def _validate_input(self):
+
+        validate_dictionary(self.data_config, DATA_CONF_KEYS, 'data_config')
+
+        validate_dictionary(self.nn_config, NN_CONF_KEYS, 'nn_config')
+
+        validate_dictionary(self.intervals, INTERVALS_KEYS, 'intervals')
+
+        validate_dictionary(self.args, ARGS_KEYS, 'args')

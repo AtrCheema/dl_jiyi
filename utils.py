@@ -549,6 +549,9 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
     y_batches = []
 
     for event_intvl in predef_intervals:
+
+        event_intvl = np.array(event_intvl)  # convert to numpy array if not already
+
         if not isinstance(event_intvl, np.ndarray):
             raise ValueError("Predefined arrays for each event must be numpy array")
 
@@ -683,7 +686,7 @@ def copy_check_points(_saved_epochs, _path):
             meta_file = os.path.join(os.getcwd(), "check_points-" + str(chpt) + ".meta")
             copyfile(meta_file, os.path.join(_path, "check_points-" + str(chpt) + ".meta"))
 
-    return cp_copied
+    return [int(cp) for cp in cp_copied]
 
 
 def get_errors(true_data, predicted_data, monitor):
@@ -702,7 +705,7 @@ def get_errors(true_data, predicted_data, monitor):
 
 
 def save_config_file(config, _path):
-    config_file = _path + "/cofig.json"
+    config_file = _path + "/config.json"
     with open(config_file, 'w') as fp:
         json.dump(config, fp, sort_keys=True, indent=4)
 
@@ -752,3 +755,9 @@ def get_pred_where_obs_available(_true, _pred):
     y_true_avail_only = _true[_true_idx]
 
     return y_true_avail_only, y_pred_avail_only
+
+
+def validate_dictionary(dictionary, keys, name):
+    for k in keys:
+        if k not in dictionary.keys():
+            raise KeyError('dictionary {} does not have key {}'.format(name, k))
