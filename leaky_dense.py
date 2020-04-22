@@ -14,7 +14,8 @@ class LeakyDense2D(Dense):
     If `mask_array` is not provided, it should act as normal Dense layer.
     `leak_inputs`: boolean, if False, the layer will act as normal Dense layer.
     `mask_array` is an array with some of its values as zeros while some non zeros.
-    First a dense operation is applied and then if `mask_array` is provided, only those outputs will be returned where `mask_array`>0.0.
+    First a dense operation is applied and then if `mask_array` is provided, only those outputs will be returned
+     where `mask_array`>0.0.
     ```python
     tf.reset_default_graph()
     dense_outputs = np.random.random((16,3))    # random 2d array where second dimension shows number
@@ -38,7 +39,7 @@ class LeakyDense2D(Dense):
         ind =y_of_int_all['key_' + str(dim)]
         y_masked[ind] = 0
         mask_ph = tf.convert_to_tensor(y_masked, dtype=tf.float32)
-        full_outputs = tf.convert_to_tensor(_y, dtype=tf.float32)     # full_outputs would be output after dense operation
+        full_outputs = tf.convert_to_tensor(_y, dtype=tf.float32)   # full_outputs would be output after dense operation
         outputs_1d = tf.reshape(full_outputs, [-1,], name='outputs_1d')
         mask_ph_1d = tf.reshape(mask_ph, [-1,], name='mask_ph_1d')
         mask = tf.math.greater(mask_ph, tf.constant(0.0, dtype=tf.float32), name='masking_op')
@@ -67,17 +68,18 @@ class LeakyDense2D(Dense):
                                            **kwargs)
         self.leaky_inputs = leaky_inputs
         self.mask_array = mask_array
-        self.verbose=verbose
+        self.verbose = verbose
 
     def build(self, input_shape):
 
         if self.leaky_inputs:
-            if self.verbose>0: print('performing mask ope')
+            if self.verbose > 0:
+                print('performing mask ope')
             if self.mask_array is None:
                 raise ValueError('provide mask array')
 
-        #             if not isinstance(self.mask_array, dict):
-        #                 raise TypeError("mask array must be a dictionary consisting of masked array for all observations")
+        #  if not isinstance(self.mask_array, dict):
+        #  raise TypeError("mask array must be a dictionary consisting of masked array for all observations")
 
         #             if len(self.mask_array) != self.units:
         #                 raise ValueError("dictionary mask_array must contain mask array for all observations")
@@ -102,10 +104,12 @@ class LeakyDense2D(Dense):
         if self.activation is not None:
             outputs = self.activation(outputs)  # pylint: disable=not-callable
 
-        if self.verbose>0: print(outputs.get_shape(), 'outputs before masking')
+        if self.verbose > 0:
+            print(outputs.get_shape(), 'outputs before masking')
 
         if self.leaky_inputs:
-            if self.verbose>0: print('performing mask op')
+            if self.verbose > 0:
+                print('performing mask op')
             self.full_outputs = outputs
             # outputs_d = {}
             # for dim in range(outputs.get_shape()[1]):
@@ -113,11 +117,13 @@ class LeakyDense2D(Dense):
             outputs_1d = tf.reshape(outputs, [-1, ], name='outputs_1d_')
 
             # mask_array = self.mask_array['key_' + str(dim)]
-            if self.verbose>0: print('mask_array', self.mask_array.get_shape())
+            if self.verbose > 0:
+                print('mask_array', self.mask_array.get_shape())
 
             mask_array_1d = tf.reshape(self.mask_array, [-1, ], name='mask_ph_1d_')
 
-            if self.verbose>0: print('mask_array_1d', mask_array_1d.get_shape())
+            if self.verbose > 0:
+                print('mask_array_1d', mask_array_1d.get_shape())
 
             mask = tf.math.greater(mask_array_1d, tf.constant(0.0), name='masking_op_')
 
@@ -125,12 +131,14 @@ class LeakyDense2D(Dense):
             outputs = tf.expand_dims(outputs, axis=1)
             # outputs_d['val_' + str(dim)] = outputs
 
-            if self.verbose > 0: print(outputs.get_shape(), 'shape of output after masking')
+            if self.verbose > 0:
+                print(outputs.get_shape(), 'shape of output after masking')
 
             return outputs
         else:
             self.full_outputs = outputs
 
-            if self.verbose>0: print(outputs.get_shape(), 'shape of output without masking')
+            if self.verbose > 0:
+                print(outputs.get_shape(), 'shape of output without masking')
 
             return outputs
