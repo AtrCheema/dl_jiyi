@@ -32,9 +32,36 @@ class DATA(object):
         self.data_dir = os.path.join(os.getcwd(), 'data')
         self.verbosity = verbosity
         self.df = self.get_df()
-        self.set_attrs()
 
-    def get_df(self):
+    @property
+    def args(self):
+        return ['Total_args', 'tetx', 'sul1', 'blaTEM', 'aac']
+
+    @property
+    def otus(self):
+        return [otu for otu in self.df.columns if 'otu' in otu]
+
+    @property
+    def all_outs(self):
+        return self.otus + self.args
+
+    @property
+    def prosp_ins(self):
+        return [col for col in self.df.columns if col not in self.all_outs]
+
+    @property
+    def rains(self):
+        return [pcp for pcp in self.prosp_ins if 'pcp' in pcp]  # rainfall data
+
+    @property
+    def misc_in(self):
+        return ['ecoli', '16s', 'inti1']
+
+    @property
+    def evn(self):
+        return [d for d in self.prosp_ins if d not in self.rains + self.misc_in]  # environmental data
+
+    def get_df(self, sheets=None):
         # 20180601 - 201909-30, (5856,3)
         f = os.path.join(self.data_dir, 'wat_data_30min.txt')
         wat_df = pd.read_csv(f)
@@ -50,28 +77,12 @@ class DATA(object):
             env_df.pop('Date_Time')
 
         # (295, 12)
-        obs_df = self.load_obs_data(sheets=['201806', '201905', '201908_1', '201908_2'])
+        obs_df = self.load_obs_data(sheets=sheets)
 
         df = pd.concat([wat_df, env_df, obs_df],
                        axis=1, join_axes=[env_df.index])
 
         return df
-
-    def set_attrs(self):
-
-        self.otus = [otu for otu in self.df.columns if 'otu' in otu]
-
-        self.args = ['Total_args', 'tetx', 'sul1', 'blaTEM', 'aac']
-
-        self.all_outs = self.otus + self.args
-
-        self.prosp_ins = [col for col in self.df.columns if col not in self.all_outs]
-
-        self.rains = [pcp for pcp in self.prosp_ins if 'pcp' in pcp]  # rainfall data
-        self.misc_in = ['ecoli', '16s', 'inti1']
-        self.env = [d for d in self.prosp_ins if d not in self.rains + self.misc_in]  # environmental data
-
-        return
 
     def plot_data(self):
         obs_logy = False
