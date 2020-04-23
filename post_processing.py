@@ -22,7 +22,7 @@ def make_predictions(data_config,
     all_errors = {}
     neg_predictions = {}
     for ep in epochs_to_evaluate:
-        sub_path = _path + '/' + str(ep) + runtype
+        sub_path = _path + '/' + str(ep)
         maybe_create_path(path=sub_path)
 
         check_point = "check_points-" + str(ep)
@@ -30,12 +30,11 @@ def make_predictions(data_config,
         x_data, test_y_pred, test_y_true = model.run_check_point(check_point=check_point,
                                                                  x_batches=x_batches,
                                                                  y_batches=y_batches,
-                                                                 data_set=test_dataset,
                                                                  scalers=scalers)
 
         # create a separate folder for each target and save its relevent data in that folder
         for idx, out in enumerate(data_config['out_features']):
-            out_path = sub_path + '/' + out
+            out_path = sub_path + '/' + out + runtype
             maybe_create_path(path=out_path)
 
             _test_y_pred = test_y_pred[:, idx]
@@ -57,7 +56,7 @@ def make_predictions(data_config,
 
             all_errors[str(ep)+'_'+out] = test_errors
 
-            print(_test_y_pred.shape, _test_y_true.shape)
+            print('shapes of predicted arrays: ', _test_y_pred.shape, _test_y_true.shape, x_data.shape)
 
             if verbose > 1:
                 for i, j in zip(_test_y_pred, _test_y_true):
@@ -68,6 +67,11 @@ def make_predictions(data_config,
             plot_scatter(test_y_true_avail, test_y_pred_avail, out_path + "/scatter")
 
             ndf = pd.DataFrame()
+
+            # fill ndf with input data
+            for i, inp in enumerate(data_config['in_features']):
+                ndf[inp] = x_data[:, i]
+
             ndf['true'] = _test_y_true
             ndf[out] = _test_y_pred
             # ndf['true_avail'] = test_y_true_avail

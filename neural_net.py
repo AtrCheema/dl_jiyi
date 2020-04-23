@@ -240,7 +240,7 @@ class NeuralNetwork(object):
                        'val_losses': train_epoch_losses}
         return saved_epochs, train_epoch_losses, val_epoch_losses
 
-    def run_check_point(self, check_point, x_batches, y_batches, data_set, scalers):
+    def run_check_point(self, check_point, x_batches, y_batches, scalers):
 
         n_outs = self.nn_config['output_features']
 

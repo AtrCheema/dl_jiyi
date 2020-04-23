@@ -78,8 +78,8 @@ model = Model(data_config=data_config,
               verbosity=verbosity)
 
 model.build_nn()
-# model.train_nn()
-# model.post_process()
+model.train_nn()
+model.post_process()
 
 # to load and run checkpoints comment above two lines and uncomment following code
 # path = d = "D:\\dl_jiyi\\models\\20200422_2009"
