@@ -7,8 +7,10 @@ import tensorflow.keras.backend as K
 from tensorflow.python.ops.rnn import dynamic_rnn
 from TSErrors import FindErrors
 
-from utils import check_min_loss  # , Batch_Generator
+from utils import check_min_loss
 from leaky_dense import LeakyDense2D
+from tensor_losses import *
+
 
 import numpy as np
 import os
@@ -95,6 +97,17 @@ class NeuralNetwork(object):
 
         if self.verbose > 0:
             print(outputs.shape, 'shape outputs')
+
+        if self.nn_config['loss'] == 'mse':
+            self.loss = tensor_mse(self.obs_y_ph, outputs)
+        elif self.nn_config['loss'] == 'nse':
+            self.loss = tensor_nse(self.obs_y_ph, outputs)
+        elif self.nn_config['loss'] == 'r2':
+            self.loss = tensor_r2(self.obs_y_ph, outputs, 'r2')
+        elif self.nn_config['loss'] == 'kge':
+            self.loss = tensor_kge(self.obs_y_ph, outputs)
+        else:
+            raise ValueError("unknown loss type {} ".format(self.nn_config['loss']))
 
         self.loss = tf.reduce_mean(tf.square(outputs - self.obs_y_ph))
         optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.nn_config['lr'])

@@ -13,6 +13,7 @@ data_config['in_features'] = in_features
 data_config['out_features'] = out_features
 data_config['normalize'] = True
 data_config['freq'] = '30min'
+data_config['monitor'] = ['mse', 'nse', 'kge', 'r2']
 
 train_args = {'lookback': lookback,
               'in_features': len(in_features),
@@ -59,7 +60,7 @@ nn_config['lookback'] = lookback
 nn_config['input_features'] = len(in_features)
 nn_config['output_features'] = len(out_features)
 nn_config['batch_size'] = BatchSize
-data_config['monitor'] = ['mse', 'nse', 'kge', 'r2']
+nn_config['loss'] = 'mse'
 
 verbosity = 1
 
