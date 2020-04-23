@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 from main import Model
 
-in_features = ['pcp_mm', 'wat_temp_c', 'sal_psu', 'wind_speed_mps']
+in_features = ['pcp_mm', 'wat_temp_c', 'sal_psu', 'wind_speed_mps', 'tide_cm']
 out_features = ['blaTEM_coppml']
 
 data_config = OrderedDict()
@@ -60,9 +60,9 @@ nn_config['lookback'] = lookback
 nn_config['input_features'] = len(in_features)
 nn_config['output_features'] = len(out_features)
 nn_config['batch_size'] = BatchSize
-nn_config['loss'] = 'kge'   # options are mse/r2/nse/kge, kge not working yet
+nn_config['loss'] = 'mse'   # options are mse/r2/nse/kge, kge not working yet
 
-verbosity = 0
+verbosity = 2
 
 intervals = {'train_intervals': train_intervals,
              'test_intervals': test_intervals,
@@ -79,8 +79,8 @@ model = Model(data_config=data_config,
               verbosity=verbosity)
 
 model.build_nn()
-model.train_nn()
-model.predict()
+saved_epochs, losses = model.train_nn()
+errors, neg_predictions = model.predict()
 
 # to load and run checkpoints comment above two lines and uncomment following code
 # path = d = "D:\\dl_jiyi\\models\\20200422_2009"

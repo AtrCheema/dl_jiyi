@@ -140,7 +140,7 @@ class Model(nn):
                                                          epochs_to_evaluate=epochs_to_evaluate,
                                                          _path=self.path,
                                                          scalers=scalers,
-                                                         runtype='_train',
+                                                         runtype='_' + m,
                                                          save_results=True,
                                                          verbose=self.verbosity)
 
