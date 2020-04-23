@@ -407,7 +407,7 @@ class BatchGenerator(object):
         if self.verbose > 1:
             print("""shape of x data: {} \nshape of y data: {}""".format(x_wins.shape, y_wins.shape))
 
-            print(""".\n{} values are skipped from start and {} values are skipped from end in output array"""
+            print("""{} values are skipped from start and {} values are skipped from end in output array"""
                   .format(st, x_data.shape[0]-first_nan_at_end))
         self.ignoriert_am_anfang = st
         self.ignoriert_am_ende = x_data.shape[0]-first_nan_at_end
@@ -415,22 +415,22 @@ class BatchGenerator(object):
         pot_samples = x_wins.shape[0]
 
         if self.verbose > 1:
-            print('\npotential samples are {}'.format(pot_samples))
+            print('potential samples are {}'.format(pot_samples))
 
         residue = pot_samples % self.batch_size
         if self.verbose > 1:
-            print('\nresidue is {} '.format(residue))
+            print('residue is {} '.format(residue))
         self.residue = residue
 
         samples = pot_samples - residue
         if self.verbose > 1:
-            print('\nActual samples are {}'.format(samples))
+            print('Actual samples are {}'.format(samples))
         self.samples = samples
 
         if predef_interval is None:
             interval = np.arange(0, samples + self.batch_size, self.batch_size)
             if self.verbose > 1:
-                print('\nPotential intervals: {}'.format(interval))
+                print('Potential intervals: {}'.format(interval))
             interval = np.append(interval, pot_samples)
 
         else:
@@ -449,7 +449,7 @@ class BatchGenerator(object):
 
         # nterval = np.unique(interval)
         if self.verbose > 1:
-            print('\nActual interval: {} '.format(interval))
+            print('Actual interval: {} '.format(interval))
 
         if trim_last_batch:
             no_of_batches = len(interval)-2
@@ -460,7 +460,7 @@ class BatchGenerator(object):
             no_of_batches = 1
 
         if self.verbose > 0:
-            print('\nNumber of batches are {} '.format(no_of_batches))
+            print('Number of batches are {} '.format(no_of_batches))
         self.no_of_batches = no_of_batches
 
         # code for generator
@@ -482,7 +482,9 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
     x_batch, mask_y_batch = next(_batch_generator)
     y_of_interest = mask_y_batch[np.where(mask_y_batch > 0.0)]
     if verbose > 0:
-        print(x_batch.shape, mask_y_batch.shape, y_of_interest.shape)
+        print('x_batch shape: ', x_batch.shape,
+              'y_batch_shape: ', mask_y_batch.shape,
+              'shape of y of 1st interest:', y_of_interest.shape)
 
     no_of_batches = generator_object.no_of_batches
     batch_size = x_batch.shape[0]
@@ -507,6 +509,7 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
         total_bact_samples[i] = 0
 
     if verbose > 0:
+        print('\n*********************************')
         print('batch ', 'Non zeros')
     for i in range(no_of_batches):
 
@@ -528,7 +531,7 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
             total_bact_samples[out_feat] += non_zeros
 
             if verbose > 1:
-                print(non_zeros, mask_y_batch[a].reshape(-1, ))
+                print(non_zeros, mask_y_batch[a].reshape(-1, ), end=' ')
             elif verbose > 0:
                 print(non_zeros, end=' ')
             if non_zeros < 1:
@@ -538,6 +541,7 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
         print('')
     if verbose > 0:
         print('total observations: ', total_bact_samples)
+        print('*********************************\n')
     return x_batches, y_batches
 
 
