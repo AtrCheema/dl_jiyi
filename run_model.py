@@ -8,7 +8,7 @@ out_features = ['blaTEM_coppml']
 
 data_config = OrderedDict()
 lookback = 8
-BatchSize = 24
+BatchSize = 32
 data_config['in_features'] = in_features
 data_config['out_features'] = out_features
 data_config['normalize'] = True
@@ -22,23 +22,23 @@ train_args = {'lookback': lookback,
               }
 
 train_intervals = [
-    [i for i in range(0, 50, BatchSize)],
-    [i for i in range(51, 91, BatchSize)],
+    [i for i in range(63, 100, BatchSize)],
+    [i for i in range(187, 230, BatchSize)],
+    [i for i in range(230, 355, BatchSize)],
+    [i for i in range(450, 600, BatchSize)],
 
-    [i for i in range(82, 197, BatchSize)],
-
-    [i for i in range(245, 406, BatchSize)],
-    [i for i in range(440, 524, BatchSize)],
-    [i for i in range(540, 610, BatchSize)]
+    [i for i in range(639, 715, BatchSize)],
+    [i for i in range(740, 800, BatchSize)],
+    # [i for i in range(870, 910, BatchSize)],
+    [i for i in range(910, 1015, BatchSize)]
 ]
 
 test_intervals = [
-    [i for i in range(737, 780, BatchSize)],
-    [i for i in range(900, 1177, BatchSize)]
+    [i for i in range(1150, 1422, BatchSize)]
 ]
 
 all_intervals = [
-    [i for i in range(0, 780, BatchSize)]
+    [i for i in range(0, 1422, BatchSize)]
                  ]
 
 
@@ -77,8 +77,9 @@ model = Model(data_config=data_config,
               intervals=intervals,
               verbosity=verbosity)
 
-model.build_and_train()
-model.post_process()
+model.build_nn()
+# model.train_nn()
+# model.post_process()
 
 # to load and run checkpoints comment above two lines and uncomment following code
 # path = d = "D:\\dl_jiyi\\models\\20200422_2009"

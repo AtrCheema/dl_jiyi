@@ -43,7 +43,7 @@ class NeuralNetwork(object):
         self.losses = None
         self.verbose = verbosity
 
-    def build_nn(self):
+    def build(self):
 
         reset_graph()
 
@@ -99,10 +99,9 @@ class NeuralNetwork(object):
         self.loss = tf.reduce_mean(tf.square(outputs - self.obs_y_ph))
         optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.nn_config['lr'])
         self.training_op = optimizer.minimize(self.loss)
+        self.saver = tf.compat.v1.train.Saver(max_to_keep=self.nn_config['n_epochs'])
 
     def train(self, train_batches, val_batches, monitor):
-
-        saver = tf.compat.v1.train.Saver(max_to_keep=self.nn_config['n_epochs'])
 
         train_x = train_batches[0]
         train_y = train_batches[1]
@@ -213,12 +212,12 @@ class NeuralNetwork(object):
                                                     ps, save_fg, to_save)
 
                 if save_fg:
-                    saver.save(sess, save_path=save_path,  global_step=epoch)
+                    self.saver.save(sess, save_path=save_path,  global_step=epoch)
 
                 print(epoch, ps)
 
                 if epoch > (self.nn_config['n_epochs']-2):
-                    saver.save(sess, save_path=save_path,  global_step=epoch)
+                    self.saver.save(sess, save_path=save_path,  global_step=epoch)
 
         en_t, self.nn_config['end_time'] = time.time(), time.asctime()
         train_time = (en_t - st_t) / 60.0 / 60.0
@@ -246,16 +245,14 @@ class NeuralNetwork(object):
         n_outs = self.nn_config['output_features']
 
         with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
-
-            saver = tf.compat.v1.train.Saver()
-
-            saver.restore(sess, check_point)
+            self.saver.restore(sess, check_point)
 
             # evaluating model on training data
             test_iterations = len(x_batches)
             print(test_iterations, 'iter')
 
-            x_data = np.full((test_iterations * self.nn_config['batch_size'], data_set.shape[1] + 1), np.nan)
+            # data_set.shape[1] + 1
+            x_data = np.full((test_iterations * self.nn_config['batch_size'], self.nn_config['input_features']), np.nan)
 
             test_y_pred = np.full((test_iterations * self.nn_config['batch_size'], n_outs), np.nan)
             test_y_true = np.full((test_iterations * self.nn_config['batch_size'], n_outs), np.nan)

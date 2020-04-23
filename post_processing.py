@@ -8,14 +8,21 @@ import numpy as np
 import pandas as pd
 
 
-def make_predictions(data_config,  x_batches, y_batches, test_dataset,
-                     model, epochs_to_evaluate, _path, scalers,  full_args,
+def make_predictions(data_config,
+                     x_batches,
+                     y_batches,
+                     test_dataset,
+                     model,
+                     epochs_to_evaluate,
+                     _path,
+                     scalers,
+                     runtype,
                      verbose=1):
 
     all_errors = {}
     neg_predictions = {}
     for ep in epochs_to_evaluate:
-        sub_path = _path + '/' + str(ep)
+        sub_path = _path + '/' + str(ep) + runtype
         maybe_create_path(path=sub_path)
 
         check_point = "check_points-" + str(ep)
@@ -69,6 +76,3 @@ def make_predictions(data_config,  x_batches, y_batches, test_dataset,
             do_plot(ndf, ndf.columns, save_name=out_path + '/' + str(out), obs_logy=True, single_ax_plots=['true', out])
 
         return all_errors, neg_predictions
-
-
-

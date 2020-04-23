@@ -53,7 +53,7 @@ class Model(nn):
         out_features = self.data_config['out_features']
 
         data_obj = DATA(freq=self.data_config['freq'])
-        all_data = data_obj.df
+        all_data = data_obj.get_df()
 
         # copying required data
         df = all_data[in_features].copy()
@@ -72,10 +72,10 @@ class Model(nn):
     def get_batches(self, dataset):
 
         train_x, train_y = generate_event_based_batches(dataset, self.nn_config['batch_size'], self.args['train_args'],
-                                                        self.intervals['train_intervals'], 2)
+                                                        self.intervals['train_intervals'], self.verbosity)
 
         test_x, test_y = generate_event_based_batches(dataset, self.nn_config['batch_size'], self.args['train_args'],
-                                                      self.intervals['test_intervals'], 2)
+                                                      self.intervals['test_intervals'], self.verbosity)
 
         all_x, all_y = generate_event_based_batches(dataset, self.nn_config['batch_size'], self.args['train_args'],
                                                     self.intervals['all_intervals'], self.verbosity-1,
@@ -89,14 +89,16 @@ class Model(nn):
         self.batches['all_y'] = all_y
         return
 
-    def build_and_train(self):
+    def build_nn(self):
 
         dataset, _ = self.pre_process_data()
 
         self.get_batches(dataset)
 
         # build neural network
-        self.build_nn()
+        self.build()
+
+    def train_nn(self):
 
         # # train model
         self.train(train_batches=[self.batches['train_x'], self.batches['train_y']],
@@ -118,16 +120,46 @@ class Model(nn):
         if 'from_config' in kwargs:
             self.get_batches(dataset)
 
-        errors, neg_predictions = make_predictions(data_config=self.data_config,
-                                                   x_batches=self.batches['train_x'],
-                                                   y_batches=self.batches['train_y'],
-                                                   test_dataset=dataset,
-                                                   model=self,
-                                                   epochs_to_evaluate=epochs_to_evaluate,
-                                                   _path=self.path,
-                                                   scalers=scalers,
-                                                   full_args=self.args['train_args'],
-                                                   verbose=self.verbosity)
+        train_errors, train_neg_predictions = make_predictions(data_config=self.data_config,
+                                                               x_batches=self.batches['train_x'],
+                                                               y_batches=self.batches['train_y'],
+                                                               test_dataset=dataset,
+                                                               model=self,
+                                                               epochs_to_evaluate=epochs_to_evaluate,
+                                                               _path=self.path,
+                                                               scalers=scalers,
+                                                               runtype='_train',
+                                                               verbose=self.verbosity)
+
+        test_errors,   test_neg_predictions = make_predictions(data_config=self.data_config,
+                                                               x_batches=self.batches['test_x'],
+                                                               y_batches=self.batches['test_y'],
+                                                               test_dataset=dataset,
+                                                               model=self,
+                                                               epochs_to_evaluate=epochs_to_evaluate,
+                                                               _path=self.path,
+                                                               scalers=scalers,
+                                                               runtype='_test',
+                                                               verbose=self.verbosity)
+
+        all_errors, all_neg_predictions = make_predictions(data_config=self.data_config,
+                                                           x_batches=self.batches['all_x'],
+                                                           y_batches=self.batches['all_y'],
+                                                           test_dataset=dataset,
+                                                           model=self,
+                                                           epochs_to_evaluate=epochs_to_evaluate,
+                                                           _path=self.path,
+                                                           scalers=scalers,
+                                                           runtype='_all',
+                                                           verbose=self.verbosity)
+
+        errors = {'train_errors': train_errors,
+                  'test_errors': test_errors,
+                  'all_errors': all_errors}
+
+        neg_predictions = {'train_neg_predictions': train_neg_predictions,
+                           'test_neg_predictions': test_neg_predictions,
+                           'all_neg_predictions': all_neg_predictions}
 
         self.save_config(errors=errors, neg_predictions=neg_predictions)
 
@@ -172,24 +204,12 @@ class Model(nn):
             data = json.load(fp)
 
         intervals = data['intervals']
-        # intervals = {}
-        # for k in INTERVALS_KEYS:
-        #     intervals[k] = data[k]
 
         args = data['args']
-        # args = {}
-        # for k in ARGS_KEYS:
-        #     args[k] = data[k]
 
         nn_config = data['nn_config']
-        # nn_conf = {}
-        # for k in NN_CONF_KEYS:
-        #     nn_conf[k] = data[k]
 
         data_config = data['data_config']
-        # data_conf = {}
-        # for k in DATA_CONF_KEYS:
-        #     data_conf[k] = data[k]
 
         return cls(data_config=data_config,
                    nn_config=nn_config,
