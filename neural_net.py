@@ -17,11 +17,14 @@ import os
 import time
 from collections import OrderedDict
 
+FUNCS = {'mse': [np.min, np.less, np.argmin, 'min'],
+         'r2': [np.max, np.greater, np.argmax, 'max'],
+         'kge': [np.max, np.greater, np.argmax, 'max'],
+         'nse': [np.max, np.greater, np.argmax, 'max']}
+
 
 def reset_graph(seed=2):
-    # tf.reset_default_graph()
     tf.compat.v1.reset_default_graph()
-    # tf.set_random_seed(seed)
     tf.compat.v1.set_random_seed(seed)
     # np.random.seed(seed)
     return
@@ -99,17 +102,17 @@ class NeuralNetwork(object):
             print(outputs.shape, 'shape outputs')
 
         if self.nn_config['loss'] == 'mse':
-            self.loss = tensor_mse(self.obs_y_ph, outputs)
+            self.loss = tf_mse(self.obs_y_ph, outputs)
         elif self.nn_config['loss'] == 'nse':
-            self.loss = tensor_nse(self.obs_y_ph, outputs)
+            self.loss = tf_nse(self.obs_y_ph, outputs)
         elif self.nn_config['loss'] == 'r2':
-            self.loss = tensor_r2(self.obs_y_ph, outputs, 'r2')
+            self.loss = tf_r2(self.obs_y_ph, outputs, 'r2')
         elif self.nn_config['loss'] == 'kge':
-            self.loss = tensor_kge(self.obs_y_ph, outputs)
+            self.loss = tf_kge(self.obs_y_ph, outputs)
         else:
             raise ValueError("unknown loss type {} ".format(self.nn_config['loss']))
 
-        self.loss = tf.reduce_mean(tf.square(outputs - self.obs_y_ph))
+        # self.loss = tf.reduce_mean(tf.square(outputs - self.obs_y_ph))
         optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.nn_config['lr'])
         self.training_op = optimizer.minimize(self.loss)
         self.saver = tf.compat.v1.train.Saver(max_to_keep=self.nn_config['n_epochs'])
@@ -134,10 +137,6 @@ class NeuralNetwork(object):
 
         train_epoch_losses = OrderedDict({key: [] for key in monitor})
         val_epoch_losses = OrderedDict({key: [] for key in monitor})
-        funcs = {'mse': [np.min, np.less, np.argmin, 'min'],
-                 'r2': [np.max, np.greater, np.argmax, 'max'],
-                 'kge': [np.max, np.greater, np.argmax, 'max'],
-                 'nse': [np.max, np.greater, np.argmax, 'max']}
 
         save_path = os.path.join(os.getcwd(), 'check_points')
 
@@ -217,7 +216,7 @@ class NeuralNetwork(object):
                 save_fg = False
                 to_save = None
                 for error in train_epoch_losses.keys():
-                    f1, f2 = funcs[error][0], funcs[error][1]
+                    f1, f2 = FUNCS[error][0], FUNCS[error][1]
                     ps, _, save_fg = check_min_loss(train_epoch_losses[error], train_batch_losses[error], epoch, f1, f2,
                                                     ps, save_fg, to_save)
                     to_save = 1
@@ -239,13 +238,13 @@ class NeuralNetwork(object):
 
         saved_epochs = {}
         for error in train_epoch_losses.keys():
-            k = funcs[error][3] + '_train_' + error + '_epoch'
-            f2 = funcs[error][2]
+            k = FUNCS[error][3] + '_train_' + error + '_epoch'
+            f2 = FUNCS[error][2]
             saved_epochs[k] = int(f2(train_epoch_losses[error]))
 
         for error in val_epoch_losses.keys():
-            k = funcs[error][3] + '_test_' + error + '_epoch'
-            f2 = funcs[error][2]
+            k = FUNCS[error][3] + '_test_' + error + '_epoch'
+            f2 = FUNCS[error][2]
             saved_epochs[k] = int(f2(val_epoch_losses[error]))
 
         self.saved_epochs = saved_epochs

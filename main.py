@@ -21,7 +21,7 @@ np.printoptions(precision=5)
 DATA_CONF_KEYS = ['in_features', 'out_features', 'normalize', 'freq', 'monitor']
 
 NN_CONF_KEYS = ['lstm_units', 'lr', 'method', 'dropout', 'batch_norm', 'lstm_activation',
-                'n_epochs', 'lookback', 'input_features', 'output_features', 'batch_size']
+                'n_epochs', 'lookback', 'input_features', 'output_features', 'batch_size', 'loss']
 
 INTERVALS_KEYS = ['train_intervals', 'test_intervals', 'all_intervals']
 
@@ -59,7 +59,8 @@ class Model(nn):
         df = all_data[in_features].copy()
         for out in out_features:
             df[out] = all_data[out].copy()
-        print('shape of whole dataset', df.shape)
+        if self.verbosity > 0:
+            print('shape of whole dataset', df.shape)
 
         dataset = nan_to_num(df.values, len(out_features), replace_with=0.0)
 

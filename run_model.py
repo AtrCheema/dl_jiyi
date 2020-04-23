@@ -60,9 +60,9 @@ nn_config['lookback'] = lookback
 nn_config['input_features'] = len(in_features)
 nn_config['output_features'] = len(out_features)
 nn_config['batch_size'] = BatchSize
-nn_config['loss'] = 'mse'
+nn_config['loss'] = 'kge'   # options are mse/r2/nse/kge, kge not working yet
 
-verbosity = 1
+verbosity = 0
 
 intervals = {'train_intervals': train_intervals,
              'test_intervals': test_intervals,

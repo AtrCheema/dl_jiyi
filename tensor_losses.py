@@ -1,5 +1,5 @@
 
-__all__ = ["tensor_mse", "tensor_nse", "tensor_r2", "tensor_kge"]
+__all__ = ["tf_mse", "tf_nse", "tf_r2", "tf_kge"]
 
 import numpy as np
 import tensorflow as tf
@@ -25,9 +25,11 @@ def np_kge(true, predicted):
 
 
 @tf.function(input_signature=[tf.TensorSpec(None, tf.float32), tf.TensorSpec(None, tf.float32)])
-def tensor_kge(input1, input2):
+def tf_kge(input1, input2):
+    print(type(input2), 'input2 type', K.dtype(input2))
+    """ kling gupta efficiency to be used as loss function. It is subtracted from one before being returned"""
     y = tf.numpy_function(np_kge, [input1, input2], tf.float32)
-    return y
+    return 1-y
 
 
 def covariance(true, predicted):
@@ -47,14 +49,16 @@ def np_nse(true, predicted):
     return _nse
 
 
-def tensor_nse(true, pred, name='nse'):
+def tf_nse(true, pred, name='nse'):
+    """ Nash-Sutcliff efficiency to be used as loss function. It is subtracted from one before being returned"""
     neum = tf.reduce_sum(tf.square(tf.subtract(pred, true)))
     denom = tf.reduce_sum(tf.square(tf.subtract(true, tf.math.reduce_mean(true))))
     const = tf.constant(1.0, dtype=tf.float32)
-    return tf.subtract(const, tf.math.divide(neum, denom), name=name)
+    _nse = tf.subtract(const, tf.math.divide(neum, denom), name=name)
+    return 1 - _nse
 
 
-def tensor_r2(pred, true, name):
+def tf_r2(pred, true, name):
     """
   R_squared computes the coefficient of determination.
   It is a measure of how well the observed outcomes are replicated by the model.
@@ -63,10 +67,10 @@ def tensor_r2(pred, true, name):
     total = tf.reduce_sum(tf.square(tf.subtract(true, tf.reduce_mean(true))))
     const = tf.constant(1.0, dtype=tf.float32)
     r2 = tf.subtract(const, tf.div(residual, total), name=name)
-    return r2
+    return 1-r2
 
 
-tensor_mse = tf.keras.losses.MSE
+tf_mse = tf.keras.losses.MSE
 
 
 if __name__ == "__main__":
@@ -74,6 +78,6 @@ if __name__ == "__main__":
     t_tensor = tf.constant(t, dtype=tf.float32)
     p_tensor = tf.constant(p, dtype=tf.float32)
 
-    print(K.eval(tensor_kge(t_tensor, p_tensor), np_kge(t, p)))
+    print(K.eval(tf_kge(t_tensor, p_tensor), np_kge(t, p)))
 
-    print(K.eval(tensor_nse(t_tensor, p_tensor)), np_nse(t, p))
+    print(K.eval(tf_nse(t_tensor, p_tensor)), np_nse(t, p))

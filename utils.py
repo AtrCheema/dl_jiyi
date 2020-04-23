@@ -370,7 +370,7 @@ class BatchGenerator(object):
         step = many_to_one_args['step']
         norm = many_to_one_args['norm']
         trim_last_batch = many_to_one_args['trim_last_batch']
-        print(self.min_ind, self.max_ind, in_features, out_features, 'here')
+
         # selecting the data of interest for x and y    
         x_data = self.data[self.min_ind:self.max_ind, 0:in_features]
         y_data = self.data[self.min_ind:self.max_ind, -out_features:].reshape(-1, out_features)
@@ -396,7 +396,7 @@ class BatchGenerator(object):
 
         # creating windows from Y data
         for i in range(0, y_data.shape[0]-lookback):
-            y_wins[i,:] = y_data[i+lookback, :]
+            y_wins[i, :] = y_data[i+lookback, :]
 
         """removing trailing nans"""
         first_nan_at_end = first_nan_from_end(y_wins[:, 0])  # first nan in last part of data, start skipping from here
