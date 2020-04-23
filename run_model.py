@@ -62,7 +62,7 @@ nn_config['output_features'] = len(out_features)
 nn_config['batch_size'] = BatchSize
 nn_config['loss'] = 'mse'   # options are mse/r2/nse/kge, kge not working yet
 
-verbosity = 2
+verbosity = 1
 
 intervals = {'train_intervals': train_intervals,
              'test_intervals': test_intervals,
