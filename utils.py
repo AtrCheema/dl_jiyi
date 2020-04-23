@@ -26,31 +26,32 @@ def random_array(_length, lower=0.0, upper=0.5):
 
 colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
           'pcp6': np.array([0.21407651, 0.23047467, 0.69924557]),
+          'pcp_mm': np.array([0.21407651, 0.23047467, 0.69924557]),
           'sur_q_cha': np.array([0.76985966, 0.33074703, 0.22861025]),
           'pred': np.array([0.81831849, 0.17526342, 0.4766505]),
           'Predicted Bacteria': np.array([0.94577241, 0.08725546, 0.11906984]),
           'pcp3': np.array([0.38079258, 0.17830983, 0.78165943]),
           'pcp1': np.array([0.74503799, 0.72589453, 0.91296436]),
-          'tide': np.array([0.39510605, 0.11174541, 0.90067133]),
-          'atm_temp': np.array([0.9624212,  0.28477194, 0.4760216]),
-          'W_temp': np.array([0.51618149, 0.16053867, 0.45268923]),
-          'wind_sp': np.array([0.76985966, 0.33074703, 0.22861025]),
-          'sal': np.array([0.76985966, 0.33074703, 0.22861025]),
+          'tide_cm': np.array([0.39510605, 0.11174541, 0.90067133]),
+          'air_temp_c': np.array([0.9624212,  0.28477194, 0.4760216]),
+          'wat_temp_c': np.array([0.51618149, 0.16053867, 0.45268923]),
+          'wind_speed_mps': np.array([0.76985966, 0.33074703, 0.22861025]),
+          'sal_psu': np.array([0.76985966, 0.33074703, 0.22861025]),
           'Total Discharge': np.array([0.38079258, 0.17830983, 0.78165943]),
-          'wind_dir': np.array([0.38079258, 0.17830983, 0.78165943]),
+          'wind_dir_deg': np.array([0.38079258, 0.17830983, 0.78165943]),
           'ecoli': np.array([0.38079258, 0.17830983, 0.78165943]),
-          'atm_p': np.array([0.13778617, 0.06228198, 0.33547859]),
+          'air_p_hpa': np.array([0.13778617, 0.06228198, 0.33547859]),
           'inti1': np.array([0.96707953, 0.46268314, 0.45772886]),
           'Training NSE': np.array([0.13778617, 0.06228198, 0.33547859]),
           'Validation NSE': np.array([0.96707953, 0.46268314, 0.45772886]),
-          'aac': np.array([0.17221373, 0.53023578, 0.96788307]),
+          'aac_coppml': np.array([0.17221373, 0.53023578, 0.96788307]),
           'blaTEM_coppml': np.array([0.49902624, 0.93245149, 0.12125226]),
           'Total_otus': np.array([0.92875036, 0.09364162, 0.33348078]),
           'Total_args': np.array([0.93950089, 0.64582256, 0.16928645]),
-          'tetx': np.array([0.06802773, 0.46382623, 0.49007703]),
+          'tetx_coppml': np.array([0.06802773, 0.46382623, 0.49007703]),
           'otu_94': np.array([0.13684922, 0.98802401, 0.34518303]),
           'otu_5575': np.array([0.54829269, 0.15069842, 0.06147751]),
-          'sul1': np.array([0.26900851, 0.96337978, 0.94641933]),
+          'sul1_coppml': np.array([0.26900851, 0.96337978, 0.94641933]),
           'otu_273': np.array([0.95896577, 0.58394066, 0.04189788]),
           '16s': np.array([0.17877267, 0.78893675, 0.92613355]),
           'true': np.array([0.49902624, 0.93245149, 0.12125226]),
@@ -59,24 +60,25 @@ colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
 
 labels = {
     "pcp1": "1 hour commulative rain",
+    "pcp_mm": "Precipitation",
     "pcp3": "3 hour commulative rain",
     "pcp6": "6 hour commulative rain",
     "pcp12": "12 hour commulative rain",
     "ecoli": "E-Coli",
     "16s": "16s",
     "inti1": "inti1 ",
-    "tide": "Tide",
-    "W_temp": "Water Temperature",
-    "sal": "Salinity",
-    "wind_sp": "Wind speed",
-    "wind_dir": "Wind direction ",
-    "atm_temp": "Atmospheric Temperature",
-    "atm_p": "Atmospheric Pressure",
+    "tide_cm": "Tide",
+    "wat_temp_c": "Water Temperature",
+    "sal_psu": "Salinity",
+    "wind_speed_mps": "Wind speed",
+    "wind_dir_deg": "Wind direction ",
+    "air_temp_c": "Atmospheric Temperature",
+    "air_p_hpa": "Atmospheric Pressure",
 
-    "aac": "aac(6')-lb-cr",
+    "aac_coppml": "aac(6')-lb-cr",
     "blaTEM_coppml": "blaTEM",
-    "sul1": "sul1",
-    "tetx": "tetX",
+    "sul1_coppml": "sul1",
+    "tetx_coppml": "tetX",
     "Total_args": "Total ARGs",
     "otu_94": "OTU 94",
     "otu_273": "OTU 273",
@@ -89,21 +91,22 @@ y_labels = {
     "pcp3": "mm",
     "pcp6": "mm",
     "pcp12": "mm",
+    "pcp_mm": "mm",
     "ecoli": "MPN per 100 mL",
     "16s": "Copies per mL",
     "inti1": "Copies per mL",
-    "tide": "cm",
-    "W_temp": r"$^\circ$C",
-    "sal": "PSU",
-    "wind_sp": "$ms{-1}$",
-    "wind_dir": r"$^\circ$",
-    "atm_temp": r"$^\circ$C",
-    "atm_p": "hPa",
+    "tide_cm": "cm",
+    "wat_temp_c": r"$^\circ$C",
+    "sal_psu": "PSU",
+    "wind_speed_mps": "$ms{-1}$",
+    "wind_dir_deg": r"$^\circ$",
+    "air_temp_c": r"$^\circ$C",
+    "air_p_hpa": "hPa",
 
-    "aac": "Copies per mL",
+    "aac_coppml": "Copies per mL",
     "blaTEM_coppml": "copies per mL",
-    "sul1": "copies per mL",
-    "tetx": "copies per mL",
+    "sul1_coppml": "copies per mL",
+    "tetx_coppml": "copies per mL",
     "Total_args": "Copies per mL",
     "otu_94": "reads",
     "otu_273": "reads",
@@ -522,7 +525,8 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
             x_batches[i, :] = mask_x_batch
             y_batches[i, :] = mask_y_batch
 
-        print(i, end='      ')
+        if verbose > 0:
+            print(i, end='      ')
 
         for out_feat in range(out_features):
 
@@ -538,7 +542,8 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
                 if raise_error:
                     raise ValueError('At minibatch {} exists where all labels are missing'.format(i))
 
-        print('')
+        if verbose > 0:
+            print('')
     if verbose > 0:
         print('total observations: ', total_bact_samples)
         print('*********************************\n')
