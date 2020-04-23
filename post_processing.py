@@ -1,22 +1,24 @@
 
-from utils import maybe_create_path, plot_loss, copy_check_points
+from utils import maybe_create_path
 from utils import get_pred_where_obs_available, get_errors
 from utils import plot_bact_points, plot_scatter
 from utils import do_plot
+from utils import plot_single_output
 
 import numpy as np
 import pandas as pd
+import os
 
 
 def make_predictions(data_config,
                      x_batches,
                      y_batches,
-                     test_dataset,
                      model,
                      epochs_to_evaluate,
                      _path,
                      scalers,
                      runtype,
+                     save_results=False,
                      verbose=1):
 
     all_errors = {}
@@ -77,6 +79,14 @@ def make_predictions(data_config,
             # ndf['true_avail'] = test_y_true_avail
             # ndf['pred_avail'] = test_y_pred_avail
 
-            do_plot(ndf, ndf.columns, save_name=out_path + '/' + str(out), obs_logy=True, single_ax_plots=['true', out])
+            do_plot(ndf, list(ndf.columns), save_name=out_path + '/' + str(out), obs_logy=True,
+                    single_ax_plots=['true', out])
+
+            ndf['Prediction'] = ndf[out]
+            plot_single_output(ndf[['true', 'Prediction', 'pcp_mm']], out_path + '/' + str(out) + '_single')
+
+            if save_results:
+                fpath = os.path.join(out_path + runtype + '_results.xlsx')
+                ndf.to_excel(fpath)
 
         return all_errors, neg_predictions

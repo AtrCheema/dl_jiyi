@@ -229,6 +229,11 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
             raise TypeError
         no_of_plots += 1
 
+        for name in single_ax_plots:
+            if name in cols:
+                cols.remove(name)
+                no_of_plots -= 1
+
     _fig, axis = plt.subplots(no_of_plots, sharex='all')
     set_fig_dim(_fig, 19, 16)
 
@@ -770,3 +775,24 @@ def validate_dictionary(dictionary, keys, name):
     for k in keys:
         if k not in dictionary.keys():
             raise KeyError('dictionary {} does not have key {}'.format(name, k))
+
+
+def plot_single_output(df, _name):
+    fig, (ax1, ax2) = plt.subplots(2, sharex='all')
+    set_fig_dim(fig, 14, 6)
+    ax1.set_title("Model Performance", fontsize=18)
+
+    process_axis(ax1, df['pcp_mm'], style='b-', c='g', ms=5, invert_yaxis=True, bottom_spine=False, show_xaxis=False)
+
+    process_axis(ax2, df['true'], style='b.', c='b', ms=5)
+    # process_axis(ax, df['Used for training'], style='b-', c='b', ms=2, label="Used for training", leg_fs=12, leg_ms=4)
+    # process_axis(ax, df['Excluded from training'], style='b*', c='b', ms=5)
+    # process_axis(ax, df['Excluded from training'], style='b-', c='b', ms=2, label='Used for testing', leg_fs=12,
+    #              leg_ms=4)
+    # process_axis(ax, df['Prediction'], style='r.', c='r', ms=6, y_label="MPN", yl_fs=14)
+    process_axis(ax2, df['Prediction'], style='r-', c='r', ms=2, label='Predicted', leg_fs=12, leg_ms=4, y_label="MPN",
+                 yl_fs=14, top_spine=False,
+                 x_label="No. of Observations", xl_fs=14)
+
+    plt.savefig(_name, dpi=300, bbox_inches='tight')
+    plt.close(fig)

@@ -123,34 +123,34 @@ class Model(nn):
         train_errors, train_neg_predictions = make_predictions(data_config=self.data_config,
                                                                x_batches=self.batches['train_x'],
                                                                y_batches=self.batches['train_y'],
-                                                               test_dataset=dataset,
                                                                model=self,
                                                                epochs_to_evaluate=epochs_to_evaluate,
                                                                _path=self.path,
                                                                scalers=scalers,
                                                                runtype='_train',
+                                                               save_results=True,
                                                                verbose=self.verbosity)
 
         test_errors,   test_neg_predictions = make_predictions(data_config=self.data_config,
                                                                x_batches=self.batches['test_x'],
                                                                y_batches=self.batches['test_y'],
-                                                               test_dataset=dataset,
                                                                model=self,
                                                                epochs_to_evaluate=epochs_to_evaluate,
                                                                _path=self.path,
                                                                scalers=scalers,
                                                                runtype='_test',
+                                                               save_results=True,
                                                                verbose=self.verbosity)
 
         all_errors, all_neg_predictions = make_predictions(data_config=self.data_config,
                                                            x_batches=self.batches['all_x'],
                                                            y_batches=self.batches['all_y'],
-                                                           test_dataset=dataset,
                                                            model=self,
                                                            epochs_to_evaluate=epochs_to_evaluate,
                                                            _path=self.path,
                                                            scalers=scalers,
                                                            runtype='_all',
+                                                           save_results=True,
                                                            verbose=self.verbosity)
 
         errors = {'train_errors': train_errors,
