@@ -3,7 +3,6 @@
 
 
 # text and xlsx files generally do not contain code
-*.txt
 *.xlsx
 *.ipynb
 
