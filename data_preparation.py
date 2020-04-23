@@ -32,7 +32,6 @@ class DATA(object):
         self.freq = freq
         self.data_dir = os.path.join(os.getcwd(), 'data')
         self.verbosity = verbosity
-        self.df = self.get_df()
 
     @property
     def args(self):
@@ -40,7 +39,10 @@ class DATA(object):
 
     @property
     def otus(self):
-        return [otu for otu in self.df.columns if 'otu' in otu]
+        if hasattr(self, 'columns'):
+            return [otu for otu in self.columns if 'otu' in otu]
+        else:
+            raise ValueError("use get_df method first to get data")
 
     @property
     def all_outs(self):
@@ -48,7 +50,10 @@ class DATA(object):
 
     @property
     def prosp_ins(self):
-        return [col for col in self.df.columns if col not in self.all_outs]
+        if hasattr(self, 'columns'):
+            return [col for col in self.columns if col not in self.all_outs]
+        else:
+            raise ValueError("use get_df method first to get data")
 
     @property
     def rains(self):
@@ -62,40 +67,50 @@ class DATA(object):
     def evn(self):
         return [d for d in self.prosp_ins if d not in self.rains + self.misc_in]  # environmental data
 
-    def get_df(self, sheets=None):
-        # 20180601 - 201909-30, (5856,3)
-        f = os.path.join(self.data_dir, 'wat_data_30min.txt')
-        wat_df = pd.read_csv(f)
-        wat_df.index = pd.to_datetime(wat_df['Date_Time'])
-        if 'Date_Time' in wat_df.columns:
-            wat_df.pop('Date_Time')
+    def get_df(self):
+        fname = 'all_data_' + self.freq + '.xlsx'
+        fpath = os.path.join(self.data_dir, fname)
+        if os.path.exists(fpath):
+            df = pd.read_excel(fpath)
+            index_col = [c for c in df.columns if 'Date_Time' in c][0]
+            df.index = df[index_col]
+            df.pop(index_col)
+            if self.verbosity > 0:
+                print('file with {} freq is available as {}'.format(self.freq, fpath))
+        else:
+            # 20180601 - 201909-30, (5856,3)
+            wat_df = self.load_wat_data()
+            if 'Date_Time' in wat_df.columns:
+                wat_df.pop('Date_Time')
 
-        # 201806 - 20190906,  (1176, 8)
-        f = os.path.join(self.data_dir, 'env_data_30min.txt')
-        env_df = pd.read_csv(f)
-        env_df.index = pd.to_datetime(env_df['Date_Time'])
-        if 'Date_Time' in env_df.columns:
-            env_df.pop('Date_Time')
+            # 201806 - 20190906,  (1176, 8)
+            env_df = self.load_env_data()
+            if 'Date_Time' in env_df.columns:
+                env_df.pop('Date_Time')
 
-        # (295, 12)
-        obs_df = self.load_obs_data(sheets=sheets)
+            # (295, 12)
+            obs_df = self.load_obs_data()
 
-        df = pd.concat([wat_df, env_df, obs_df],
-                       axis=1, join_axes=[env_df.index])
+            df = pd.concat([wat_df, env_df, obs_df],
+                           axis=1, join_axes=[env_df.index])
+
+            df.to_excel(fpath)
+
+        setattr(self, 'columns', list(df.columns))
 
         return df
 
-    def plot_data(self):
+    def plot_data(self, df):
         obs_logy = False
         for out in self.all_outs:
             if out in self.args:
                 obs_logy = True
             idx = 0
             for in_type in [self.rains, self.misc_in, self.env]:
-                plt_df = pd.DataFrame(index=self.df.index)
+                plt_df = pd.DataFrame(index=df.index)
                 for _in in in_type:
-                    plt_df[_in] = self.df[_in]
-                plt_df[out] = self.df[out]
+                    plt_df[_in] = df[_in]
+                plt_df[out] = df[out]
 
                 plt_df = remove_chunk('20180630', '20190516', plt_df)
 
@@ -116,11 +131,11 @@ class DATA(object):
         if sheets is None:
             sheets = ['201806', '201905', '201908_1', '201908_2', '201909']
 
-        f = os.path.join(self.data_dir, 'Time_series_data.xlsx')
+        fpath = os.path.join(self.data_dir, 'Time_series_data.xlsx')
         haupt_df = pd.DataFrame()
 
         for sheet in sheets:
-            df = pd.read_excel(f, sheet_name=sheet)
+            df = pd.read_excel(fpath, sheet_name=sheet)
             date = df['date'].astype(str)
             time = df['time'].astype(str)
             idx1 = date + ' ' + time
@@ -149,9 +164,14 @@ class DATA(object):
     def load_wat_data(self, desired_output=None):
         """1 minute data at a site 10 km away from Gwangali"""
 
-        desired_file = os.path.join(self.data_dir, 'wat_data_' + self.freq + 'txt')
+        desired_file = os.path.join(self.data_dir, 'wat_data_' + self.freq + '.csv')
         if os.path.exists(desired_file):
-            return pd.read_excel(desired_file)
+            if self.verbosity > 0:
+                print('file with {} freq is available as {}'.format(self.freq, desired_file))
+            df = pd.read_csv(desired_file)
+            df.index = pd.to_datetime(df['Date_Time'])
+            df.pop('Date_Time')
+            return df
         else:
             if desired_output is None:
                 desired_output = ['tide_cm', 'wat_temp_c', 'sal_psu']
@@ -159,9 +179,9 @@ class DATA(object):
             _d_dir = os.path.join(os.getcwd(), 'data\\busan')
             _files = [f for f in os.listdir(_d_dir) if f.endswith('txt')]
             haupt_df = pd.DataFrame()
-            for f in _files:
-                _f = os.path.join(_d_dir, f)
-                _df = pd.read_csv(_f, comment='#', sep='\t', na_values='-')
+            for fname in _files:
+                fpath = os.path.join(_d_dir, fname)
+                _df = pd.read_csv(fpath, comment='#', sep='\t', na_values='-')
                 idx = pd.to_datetime(_df['Date_Time'])
                 _df.index = idx
                 _df.index.freq = pd.infer_freq(_df.index)
@@ -170,7 +190,7 @@ class DATA(object):
                 if not isinstance(_df.index.freqstr, str):
                     raise ValueError
                 if self.verbosity > 0:
-                    print(_f, _df.index.freq)
+                    print(fpath, _df.index.freq)
 
                 ts = pd.DataFrame()
                 for col in desired_output:  # _df.columns:
@@ -180,7 +200,7 @@ class DATA(object):
 
                 haupt_df = pd.concat([haupt_df, ts])
             final_df = haupt_df[desired_output]
-            final_df.to_excel(os.path.join(self.data_dir), 'wat_data_' + self.freq + 'txt')
+            final_df.to_csv(desired_file)
             return final_df
 
     def load_env_data(self, desired_output=None):
@@ -188,9 +208,15 @@ class DATA(object):
         The data is from two sites. For each data, the number of nans are comapred and data from that site is accepted
         which contains lower number of nans."""
 
-        desired_file = os.path.join(self.data_dir, 'env_data_' + self.freq + 'txt')
+        desired_file = os.path.join(self.data_dir, 'env_data_' + self.freq + '.csv')
         if os.path.exists(desired_file):
-            return pd.read_excel(desired_file)
+            df = pd.read_csv(desired_file)
+            index_col = [c for c in df.columns if 'Date_Time' in c][0]
+            df.index = pd.to_datetime(df[index_col])
+            df.pop(index_col)
+            if self.verbosity > 0:
+                print('file with {} freq is available as {}'.format(self.freq, desired_file))
+            return df
         else:
             if desired_output is None:
                 desired_output = ['air_temp_c', 'pcp_mm', 'wind_dir_deg', 'wind_speed_mps',
@@ -203,11 +229,12 @@ class DATA(object):
             files = [f for f in os.listdir(d_dir) if f.endswith('txt')]
             haupt_df = pd.DataFrame()
 
-            for _f in files:
-                f = os.path.join(d_dir, _f)
-                file_df = pd.read_csv(f, sep='\t')
+            for fname in files:
+                fpath = os.path.join(d_dir, fname)
+                file_df = pd.read_csv(fpath, sep='\t')
 
                 col_df = pd.DataFrame()
+                col_df_ds = None
                 for col in cols:  # for each columns in file
                     col_df1 = pd.DataFrame()
                     col_df2 = pd.DataFrame()
@@ -216,7 +243,7 @@ class DATA(object):
                         _idx = file_df['Date_Time' + site]
                         _col = col + site
                         _df1 = pd.DataFrame(file_df[_col])
-                        _df1 = assign_freq(_df1, _idx, _f+' ' + col, force_freq='1min', verbosity=self.verbosity-1,
+                        _df1 = assign_freq(_df1, _idx, fname + ' ' + col, force_freq='1min', verbosity=self.verbosity-1,
                                            print_only=False)
                         if site == '1':
                             col_df1 = pd.concat([col_df1, _df1], axis=1, sort=False)
@@ -226,27 +253,30 @@ class DATA(object):
                     nans_2 = int(col_df2.isna().sum())
                     if nans_1 > nans_2:
                         col_df2.columns = [col]
+                        col_df2 = assign_freq(col_df2, _idx, fname + ' ' + col, force_freq='1min',
+                                              verbosity=self.verbosity)
                         col_df = pd.concat([col_df, col_df2], axis=1, sort=False)
                         if self.verbosity > 1:
                             print('for {}, {} is chosen which had {} nans while {} had {} nans'.format(col, 2, nans_2,
                                                                                                        1, nans_1))
                     else:
                         col_df1.columns = [col]
-                        col_df1 = assign_freq(col_df1, _idx, _f + ' ' + col, force_freq='1min',
+                        col_df1 = assign_freq(col_df1, _idx, fname + ' ' + col, force_freq='1min',
                                               verbosity=self.verbosity-1)
                         col_df = pd.concat([col_df, col_df1], axis=1, sort=False)
                         if self.verbosity > 1:
                             print('for {}, {} is chosen which had {} nans while {} had {} nans'
                                   .format(col, 1, nans_1, 2, nans_2))
 
-                    col_df = down_sample(col_df, col, self.freq, _idx, self.verbosity)
+                    col_df_ds = down_sample(col_df, col, self.freq, _idx, self.verbosity, fname=fname)
 
-                col_df = assign_freq(col_df, file=_f, force_freq=None, verbosity=self.verbosity, print_only=True)
+                # here only printing, not forcing it. If index does not have frequency yet, then we are doomed
+                col_df_mit_freq = assign_freq(col_df_ds, file=fname, verbosity=self.verbosity, print_only=True)
 
-                haupt_df = pd.concat([haupt_df, col_df])
+                haupt_df = pd.concat([haupt_df, col_df_mit_freq])
 
             final_df = haupt_df[desired_output]
-            final_df.to_excel(os.path.join(self.data_dir), 'env_data_' + self.freq + 'txt')
+            final_df.to_csv(desired_file)
             return final_df
 
 
@@ -261,12 +291,12 @@ def assign_freq(df, index=None, file=None, force_freq=None,  verbosity=1, print_
     if df.index.freq is None:
         if force_freq is not None:
             df.index.freq = force_freq
-    if verbosity > 0:
+    if verbosity > 1:
         print('in file {} frequency is {}'.format(file, df.index.freq))
     return df
 
 
-def down_sample(data_frame, data_name, desired_freq, idx,  verbosity=1):
+def down_sample(data_frame, data_name, desired_freq, idx,  verbosity=1, fname=None):
 
     if idx is not None:
         data_frame.index = pd.to_datetime(idx)
@@ -275,7 +305,7 @@ def down_sample(data_frame, data_name, desired_freq, idx,  verbosity=1):
         data_frame.index = data_frame['Date_Time']
 
     if verbosity > 1:
-        print(data_frame.shape, data_frame.columns)
+        print('dataframe to downsample has {} shape and {} columns'.format(data_frame.shape, list(data_frame.columns)))
 
     if not isinstance(data_frame.index, pd.DatetimeIndex):
         raise TypeError("index of data_frame must be of Datetime")
@@ -283,6 +313,10 @@ def down_sample(data_frame, data_name, desired_freq, idx,  verbosity=1):
     out_freq = desired_freq
     data_frame = data_frame.copy()
     old_freq = data_frame.index.freq
+    if old_freq is None:
+        raise TypeError("Index of datafrmae {} to downsample has no initial frequency in file {}"
+                        .format(data_name, fname))
+
     if verbosity > 0:
         print('downsampling {} data from {} min to {}'.format(data_name, old_freq, out_freq))
     # e.g. from hourly to daily
