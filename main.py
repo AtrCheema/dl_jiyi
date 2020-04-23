@@ -113,54 +113,39 @@ class Model(nn):
 
         return self.saved_epochs, self.losses
 
-    def post_process(self, **kwargs):
+    def predict(self, mode=None, **kwargs):
+        """
 
+        :param mode: list or str, if list then all members must be str default is ['train', 'test', 'all']
+        :param kwargs: if `from_config` is present in kwargs, then predictions will be made based on checkpoints saved
+                     in self.path
+        :return: errors, dictionary of errors from each mode
+                 neg_predictions, dictionary of negative prediction from each mode
+        """
         dataset, scalers = self.pre_process_data()
+
+        mode = _get_mode(mode)
 
         epochs_to_evaluate = self.data_config['saved_unique_cp']
         if 'from_config' in kwargs:
             self.get_batches(dataset)
 
-        train_errors, train_neg_predictions = make_predictions(data_config=self.data_config,
-                                                               x_batches=self.batches['train_x'],
-                                                               y_batches=self.batches['train_y'],
-                                                               model=self,
-                                                               epochs_to_evaluate=epochs_to_evaluate,
-                                                               _path=self.path,
-                                                               scalers=scalers,
-                                                               runtype='_train',
-                                                               save_results=True,
-                                                               verbose=self.verbosity)
+        errors = {}
+        neg_predictions = {}
+        for m in mode:
+            _errors, _neg_predictions = make_predictions(data_config=self.data_config,
+                                                         x_batches=self.batches[m + '_x'],  # like `train_x` or `val_x`
+                                                         y_batches=self.batches[m + '_y'],
+                                                         model=self,
+                                                         epochs_to_evaluate=epochs_to_evaluate,
+                                                         _path=self.path,
+                                                         scalers=scalers,
+                                                         runtype='_train',
+                                                         save_results=True,
+                                                         verbose=self.verbosity)
 
-        test_errors,   test_neg_predictions = make_predictions(data_config=self.data_config,
-                                                               x_batches=self.batches['test_x'],
-                                                               y_batches=self.batches['test_y'],
-                                                               model=self,
-                                                               epochs_to_evaluate=epochs_to_evaluate,
-                                                               _path=self.path,
-                                                               scalers=scalers,
-                                                               runtype='_test',
-                                                               save_results=True,
-                                                               verbose=self.verbosity)
-
-        all_errors, all_neg_predictions = make_predictions(data_config=self.data_config,
-                                                           x_batches=self.batches['all_x'],
-                                                           y_batches=self.batches['all_y'],
-                                                           model=self,
-                                                           epochs_to_evaluate=epochs_to_evaluate,
-                                                           _path=self.path,
-                                                           scalers=scalers,
-                                                           runtype='_all',
-                                                           save_results=True,
-                                                           verbose=self.verbosity)
-
-        errors = {'train_errors': train_errors,
-                  'test_errors': test_errors,
-                  'all_errors': all_errors}
-
-        neg_predictions = {'train_neg_predictions': train_neg_predictions,
-                           'test_neg_predictions': test_neg_predictions,
-                           'all_neg_predictions': all_neg_predictions}
+            errors[m + '_errors'] = _errors
+            neg_predictions[m + '_neg_predictions'] = _neg_predictions
 
         self.save_config(errors=errors, neg_predictions=neg_predictions)
 
@@ -227,3 +212,21 @@ class Model(nn):
         validate_dictionary(self.intervals, INTERVALS_KEYS, 'intervals')
 
         validate_dictionary(self.args, ARGS_KEYS, 'args')
+
+
+def _get_mode(mode):
+
+    def_mode = ['train', 'test', 'all']
+    if mode is None:
+        mode = def_mode
+    else:
+        if not isinstance(mode, list):
+            if not isinstance(mode, str):
+                raise TypeError("mode must be string")
+            else:
+                mode = [mode]
+        else:
+            for m in mode:
+                if m not in def_mode:
+                    raise ValueError("{} not allowed".format(m))
+    return mode

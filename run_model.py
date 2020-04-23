@@ -80,10 +80,10 @@ model = Model(data_config=data_config,
 
 model.build_nn()
 model.train_nn()
-model.post_process()
+model.predict()
 
 # to load and run checkpoints comment above two lines and uncomment following code
 # path = d = "D:\\dl_jiyi\\models\\20200422_2009"
 # model = Model.from_config(path)
 # model.build_nn()
-# model.post_process(from_config=True)
+# model.predict(from_config=True)

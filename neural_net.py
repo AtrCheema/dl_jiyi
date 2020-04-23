@@ -1,6 +1,6 @@
 __all__ = ["NeuralNetwork"]
 
-from tensorflow.keras.layers import LSTMCell, Dropout, LSTM, BatchNormalization, Activation  # , CuDNNLSTM
+from tensorflow.keras.layers import LSTMCell, Dropout, LSTM, BatchNormalization, Activation
 from tensorflow.python.keras.layers import RNN
 import tensorflow as tf
 import tensorflow.keras.backend as K

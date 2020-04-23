@@ -5,7 +5,6 @@ import os
 
 from utils import do_plot
 
-# TODO all events must start with some data prior to observations
 # TODO check for outliers in data
 
 
