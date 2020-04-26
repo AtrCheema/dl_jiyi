@@ -66,7 +66,7 @@ class DATA(object):
     def evn(self):
         return [d for d in self.prosp_ins if d not in self.rains + self.misc_in]  # environmental data
 
-    def get_df(self):
+    def get_df(self, wat_data_from_rf=True):
         fname = 'all_data_' + self.freq + '.xlsx'
         fpath = os.path.join(self.data_dir, fname)
         if os.path.exists(fpath):
@@ -78,7 +78,7 @@ class DATA(object):
                 print('file with {} freq is available as {}'.format(self.freq, fpath))
         else:
             # 20180601 - 201909-30, (5856,3)
-            wat_df = self.load_wat_data()
+            wat_df = self.load_wat_data(from_rf=wat_data_from_rf)
             if 'Date_Time' in wat_df.columns:
                 wat_df.pop('Date_Time')
 
@@ -160,47 +160,50 @@ class DATA(object):
             haupt_df = pd.concat([haupt_df, df])
         return haupt_df[desired_output]
 
-    def load_wat_data(self, desired_output=None):
+    def load_wat_data(self, from_rf=True,
+                      desired_output=None):
         """1 minute data at a site 10 km away from Gwangali"""
-
-        desired_file = os.path.join(self.data_dir, 'wat_data_' + self.freq + '.csv')
-        if os.path.exists(desired_file):
-            if self.verbosity > 0:
-                print('file with {} freq is available as {}'.format(self.freq, desired_file))
-            df = pd.read_csv(desired_file)
-            df.index = pd.to_datetime(df['Date_Time'])
-            df.pop('Date_Time')
-            return df
+        if from_rf:
+            return self.load_rf_data()
         else:
-            if desired_output is None:
-                desired_output = ['tide_cm', 'wat_temp_c', 'sal_psu']
-
-            _d_dir = os.path.join(os.getcwd(), 'data\\busan')
-            _files = [f for f in os.listdir(_d_dir) if f.endswith('txt')]
-            haupt_df = pd.DataFrame()
-            for fname in _files:
-                fpath = os.path.join(_d_dir, fname)
-                _df = pd.read_csv(fpath, comment='#', sep='\t', na_values='-')
-                idx = pd.to_datetime(_df['Date_Time'])
-                _df.index = idx
-                _df.index.freq = pd.infer_freq(_df.index)
-                if not isinstance(_df.index, pd.DatetimeIndex):
-                    raise ValueError
-                if not isinstance(_df.index.freqstr, str):
-                    raise ValueError
+            desired_file = os.path.join(self.data_dir, 'wat_data_' + self.freq + '.csv')
+            if os.path.exists(desired_file):
                 if self.verbosity > 0:
-                    print(fpath, _df.index.freq)
+                    print('file with {} freq is available as {}'.format(self.freq, desired_file))
+                df = pd.read_csv(desired_file)
+                df.index = pd.to_datetime(df['Date_Time'])
+                df.pop('Date_Time')
+                return df
+            else:
+                if desired_output is None:
+                    desired_output = ['tide_cm', 'wat_temp_c', 'sal_psu']
 
-                ts = pd.DataFrame()
-                for col in desired_output:  # _df.columns:
-                    to_resample = pd.DataFrame(_df[col])
-                    _ts = down_sample(to_resample, col, self.freq, idx=None, verbosity=self.verbosity)
-                    ts = pd.concat([ts, _ts], axis=1, sort=False)
+                _d_dir = os.path.join(os.getcwd(), 'data\\busan')
+                _files = [f for f in os.listdir(_d_dir) if f.endswith('txt')]
+                haupt_df = pd.DataFrame()
+                for fname in _files:
+                    fpath = os.path.join(_d_dir, fname)
+                    _df = pd.read_csv(fpath, comment='#', sep='\t', na_values='-')
+                    idx = pd.to_datetime(_df['Date_Time'])
+                    _df.index = idx
+                    _df.index.freq = pd.infer_freq(_df.index)
+                    if not isinstance(_df.index, pd.DatetimeIndex):
+                        raise ValueError
+                    if not isinstance(_df.index.freqstr, str):
+                        raise ValueError
+                    if self.verbosity > 0:
+                        print(fpath, _df.index.freq)
 
-                haupt_df = pd.concat([haupt_df, ts])
-            final_df = haupt_df[desired_output]
-            final_df.to_csv(desired_file)
-            return final_df
+                    ts = pd.DataFrame()
+                    for col in desired_output:  # _df.columns:
+                        to_resample = pd.DataFrame(_df[col])
+                        _ts = down_sample(to_resample, col, self.freq, idx=None, verbosity=self.verbosity)
+                        ts = pd.concat([ts, _ts], axis=1, sort=False)
+
+                    haupt_df = pd.concat([haupt_df, ts])
+                final_df = haupt_df[desired_output]
+                final_df.to_csv(desired_file)
+                return final_df
 
     def load_env_data(self, desired_output=None):
         """ loads 1 minute data from a site located 10 km from Gwangali.
@@ -278,6 +281,38 @@ class DATA(object):
             final_df.to_csv(desired_file)
             return final_df
 
+
+    def load_rf_data(self):
+        desired_file = os.path.join(self.data_dir, 'wat_data_rf_' + self.freq + '.xlsx')
+        if os.path.exists(desired_file):
+            if self.verbosity > 0:
+                print('file with {} freq is available as {}'.format(self.freq, desired_file))
+            hdf = pd.read_excel(desired_file)
+            hdf.index = pd.to_datetime(hdf['Date_Time'])
+            hdf.pop('Date_Time')
+            return hdf
+        else:
+            if self.freq != '30min':
+                raise NotImplementedError
+            fprocessed = os.path.join(self.data_dir, 'wat_data_rf_30min.xlsx')
+            if os.path.exists(fprocessed):
+                if self.verbosity > 0:
+                    print('loading wat data from processed file')
+                hdf = pd.read_excel(fprocessed)
+            else:
+                funprocessed = os.path.join(self.data_dir, 'wat_data_rf.xlsx')
+                df18 = pd.read_excel(funprocessed, sheet_name='2018')
+                df18.index = pd.to_datetime(df18['Date_Time'])
+                df19 = pd.read_excel(funprocessed, sheet_name='2019')
+                df19.index = pd.to_datetime(df19['Date_Time'])
+                hdf = pd.concat([df18, df19])
+                hdf.index = pd.to_datetime(hdf['Date_Time'])
+                _ = hdf.pop('Date_Time')
+                hdf['tide_m'] = hdf['tide_m'] * 100
+                hdf.columns = ['tide_cm', 'wat_temp_c', 'sal_psu']
+                hdf.to_excel('data/wat_data_rf_30min.xlsx')
+
+            return hdf
 
 def assign_freq(df, index=None, file=None, force_freq=None,  verbosity=1, print_only=False):
     if not print_only:
