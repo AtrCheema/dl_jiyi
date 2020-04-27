@@ -13,7 +13,7 @@ data_config['in_features'] = in_features
 data_config['out_features'] = out_features
 data_config['normalize'] = True
 data_config['freq'] = '30min'
-data_config['monitor'] = ['mse', 'nse', 'kge', 'r2']
+data_config['monitor'] = ['mse']  # , 'r2'
 
 train_args = {'lookback': lookback,
               'in_features': len(in_features),
@@ -23,19 +23,16 @@ train_args = {'lookback': lookback,
               }
 
 train_intervals = [
-    [i for i in range(63, 100, BatchSize)],
-    [i for i in range(187, 230, BatchSize)],
-    [i for i in range(230, 355, BatchSize)],
-    [i for i in range(450, 600, BatchSize)],
+    [i for i in range(0, 147, BatchSize)],
+    [i for i in range(149, 393, BatchSize)],
+    [i for i in range(394, 638, BatchSize)],
+    [i for i in range(639, 834, BatchSize)],
+    [i for i in range(839, 1100, BatchSize)],
 
-    [i for i in range(639, 715, BatchSize)],
-    [i for i in range(740, 800, BatchSize)],
-    # [i for i in range(870, 910, BatchSize)],
-    [i for i in range(910, 1015, BatchSize)]
 ]
 
 test_intervals = [
-    [i for i in range(1150, 1422, BatchSize)]
+    [i for i in range(1100, 1422, BatchSize)]
 ]
 
 all_intervals = [
@@ -62,7 +59,7 @@ nn_config['output_features'] = len(out_features)
 nn_config['batch_size'] = BatchSize
 nn_config['loss'] = 'mse'   # options are mse/r2/nse/kge, kge not working yet
 
-verbosity = 1
+verbosity = 2
 
 intervals = {'train_intervals': train_intervals,
              'test_intervals': test_intervals,

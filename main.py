@@ -72,15 +72,28 @@ class Model(nn):
 
     def get_batches(self, dataset):
 
-        train_x, train_y = generate_event_based_batches(dataset, self.nn_config['batch_size'], self.args['train_args'],
-                                                        self.intervals['train_intervals'], self.verbosity)
+        train_x, train_y, train_no_of_batches = generate_event_based_batches(dataset,
+                                                                             self.nn_config['batch_size'],
+                                                                             self.args['train_args'],
+                                                                             self.intervals['train_intervals'],
+                                                                             self.verbosity,
+                                                                             skip_batch_with_no_labels=True)
 
-        test_x, test_y = generate_event_based_batches(dataset, self.nn_config['batch_size'], self.args['train_args'],
-                                                      self.intervals['test_intervals'], self.verbosity)
+        test_x, test_y, test_no_of_batches = generate_event_based_batches(dataset, self.nn_config['batch_size'],
+                                                                          self.args['train_args'],
+                                                                          self.intervals['test_intervals'],
+                                                                          self.verbosity,
+                                                                          skip_batch_with_no_labels=True)
 
-        all_x, all_y = generate_event_based_batches(dataset, self.nn_config['batch_size'], self.args['train_args'],
-                                                    self.intervals['all_intervals'], self.verbosity-1,
-                                                    raise_error=False)
+        all_x, all_y, all_no_of_batches = generate_event_based_batches(dataset, self.nn_config['batch_size'],
+                                                                       self.args['train_args'],
+                                                                       self.intervals['all_intervals'],
+                                                                       self.verbosity-1,
+                                                                       raise_error=False)
+
+        self.nn_config['train_no_of_batches'] = train_no_of_batches
+        self.nn_config['test_no_of_batches'] = test_no_of_batches
+        self.nn_config['all_no_of_batches'] = all_no_of_batches
 
         self.batches['train_x'] = train_x
         self.batches['train_y'] = train_y

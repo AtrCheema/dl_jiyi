@@ -486,7 +486,19 @@ class BatchGenerator(object):
                 yield x_batch, y_batch
 
 
-def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, raise_error=True):
+def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, raise_error=True,
+                             skip_batch_with_no_labels=False):
+    """
+
+    :param generator_object:
+    :param _batch_generator:
+    :param verbose:
+    :param raise_error:
+    :param skip_batch_with_no_labels: if True, then those batches which have no labels will be ignored altogether. In
+      such a case, argument `raise_error` will be rendered useless. This should be used only to generate training data,
+      if we want to optimize batch size, because this option will allow us to have flexible batch size.
+    :return:
+    """
     x_batch, mask_y_batch = next(_batch_generator)
     y_of_interest = mask_y_batch[np.where(mask_y_batch > 0.0)]
     if verbose > 0:
@@ -495,15 +507,16 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
               'shape of y of 1st interest:', y_of_interest.shape)
 
     no_of_batches = generator_object.no_of_batches
+    no_of_batches_recalc = no_of_batches
     batch_size = x_batch.shape[0]
     lookback = x_batch.shape[1]
     in_features = x_batch.shape[2]
     out_features = mask_y_batch.shape[1]
 
-    if hasattr(generator_object, 'last_bat_sz'):
+    if hasattr(generator_object, 'last_bat_sz') or skip_batch_with_no_labels:
         # batch size is variable so one array of all batches can not be constructed
-        x_batches = [None]*no_of_batches
-        y_batches = [None]*no_of_batches
+        x_batches = []     # not predefining length of this list because it can vary if a batch contains no labels
+        y_batches = []
     else:
         x_batches = np.full((no_of_batches, batch_size, lookback, in_features), np.nan)
         y_batches = np.full((no_of_batches, batch_size, out_features), np.nan)
@@ -519,16 +532,11 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
     if verbose > 0:
         print('\n*********************************')
         print('batch ', 'Non zeros')
+
+    skip_this_batch = False
     for i in range(no_of_batches):
 
         mask_x_batch, mask_y_batch = next(_batch_generator)
-
-        if hasattr(generator_object, 'last_bat_sz'):
-            x_batches[i] = mask_x_batch
-            y_batches[i] = mask_y_batch
-        else:
-            x_batches[i, :] = mask_x_batch
-            y_batches[i, :] = mask_y_batch
 
         if verbose > 0:
             print(i, end='      ')
@@ -544,23 +552,45 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
             elif verbose > 0:
                 print(non_zeros, end=' ')
             if non_zeros < 1:
-                if raise_error:
-                    raise ValueError('At minibatch {} exists where all labels are missing'.format(i))
+                if skip_batch_with_no_labels:
+                    skip_this_batch = True        # we want to skip this batch and
+                    no_of_batches_recalc -= 1     # total number of batches will be reduced by 1.
+                else:
+                    if raise_error:
+                        raise ValueError('At minibatch {} exists where all labels are missing'.format(i))
+
+        if skip_this_batch:
+            if verbose > 0:
+                print('skipping batch no {}'.format(i))
+        else:
+            if hasattr(generator_object, 'last_bat_sz') or skip_batch_with_no_labels:
+                x_batches.append(mask_x_batch)
+                y_batches.append(mask_y_batch)
+            else:
+                x_batches[i, :] = mask_x_batch
+                y_batches[i, :] = mask_y_batch
+
+        # next batch should not be skipped by default
+        skip_this_batch = False
 
         if verbose > 0:
             print('')
     if verbose > 0:
         print('total observations: ', total_bact_samples)
         print('*********************************\n')
-    return x_batches, y_batches
+
+    return x_batches, y_batches, no_of_batches_recalc
 
 
-def generate_event_based_batches(data, batch_size, args, predef_intervals, verbosity=1, raise_error=True):
+def generate_event_based_batches(data, batch_size, args, predef_intervals, verbosity=1,
+                                 raise_error=True,
+                                 skip_batch_with_no_labels=False):
     args = deepcopy(args)
     events = len(predef_intervals)
 
     x_batches = []
     y_batches = []
+    no_of_batches = 0
 
     for event_intvl in predef_intervals:
 
@@ -575,9 +605,16 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
         event_generator = BatchGenerator(data, batch_size, args, verbose=verbosity)
         _gen = event_generator.many_to_one(predef_interval=event_intvl)
 
-        x, y = check_and_initiate_batch(event_generator, _gen, verbosity, raise_error=raise_error)
+        event_x_batches,\
+            event_y_batches,\
+            _no_of_batches = check_and_initiate_batch(event_generator,
+                                                      _gen, verbosity,
+                                                      raise_error=raise_error,
+                                                      skip_batch_with_no_labels=skip_batch_with_no_labels)
 
-        for x_batch, y_batch in zip(x, y):
+        no_of_batches += _no_of_batches
+
+        for x_batch, y_batch in zip(event_x_batches, event_y_batches):
             x_batches.append(x_batch)
             y_batches.append(y_batch)
 
@@ -585,7 +622,7 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
         for x_batch, y_batch in zip(x_batches, y_batches):
             print(x_batch.shape, y_batch.shape)
 
-    return x_batches, y_batches
+    return x_batches, y_batches, no_of_batches
 
 
 def nan_to_num(array, outs, replace_with=0.0):
