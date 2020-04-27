@@ -12,7 +12,7 @@ class DATA(object):
     """
     `attributes`
     -----------
-     df:        dataframe consisting of input data
+     columns:   list consisting of names of all available data
      all_outs:  list consisting of names of all possible outputs
      otus:     list consisting of names of all OTUs
      args:     list consisting of names of all possible ARGs
@@ -23,6 +23,7 @@ class DATA(object):
 
     `methods`
     -----------
+    get_df: prepares (if needed) and returns a dataframe consisting of all input data
     plot_input: plots all the input and output data.
     """
 
