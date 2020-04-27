@@ -744,9 +744,6 @@ def get_errors(true_data, predicted_data, monitor):
     errors = {}
     _er = FindErrors(true_data.reshape(-1, ), predicted_data.reshape(-1, ))
     all_errors = _er.all_methods
-    all_errors.remove('mgd')
-    all_errors.remove('mpd')
-    all_errors.remove('msle')
     for err in all_errors:
         errors[err] = float(getattr(_er, err)())
 
