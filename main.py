@@ -155,7 +155,7 @@ class Model(nn):
                                                          scalers=scalers,
                                                          runtype='_' + m,
                                                          save_results=True,
-                                                         verbose=self.verbosity)
+                                                          verbose=self.verbosity)
 
             errors[m + '_errors'] = _errors
             neg_predictions[m + '_neg_predictions'] = _neg_predictions

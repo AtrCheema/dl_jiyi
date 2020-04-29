@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 from main import Model
 
-in_features = ['pcp_mm', 'wat_temp_c', 'sal_psu', 'wind_speed_mps', 'tide_cm']
+in_features = ['pcp_mm','air_p_hpa']
 out_features = ['blaTEM_coppml']
 
 data_config = OrderedDict()
@@ -51,7 +51,7 @@ nn_config['method'] = 'keras_lstm_layer'
 nn_config['dropout'] = dropout
 nn_config['batch_norm'] = False
 nn_config['lstm_activation'] = None if nn_config['batch_norm'] else act_f
-nn_config['n_epochs'] = 10
+nn_config['n_epochs'] = 20
 
 nn_config['lookback'] = lookback
 nn_config['input_features'] = len(in_features)
@@ -59,7 +59,7 @@ nn_config['output_features'] = len(out_features)
 nn_config['batch_size'] = BatchSize
 nn_config['loss'] = 'mse'   # options are mse/r2/nse/kge, kge not working yet
 
-verbosity = 2
+verbosity = 1
 
 intervals = {'train_intervals': train_intervals,
              'test_intervals': test_intervals,
