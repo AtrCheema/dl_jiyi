@@ -55,6 +55,7 @@ colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
           'otu_273': np.array([0.95896577, 0.58394066, 0.04189788]),
           '16s': np.array([0.17877267, 0.78893675, 0.92613355]),
           'true': np.array([0.49902624, 0.93245149, 0.12125226]),
+          'rel_hum':  np.array([0.49902624, 0.93245149, 0.12125226]),
           }
 
 
@@ -74,6 +75,7 @@ labels = {
     "wind_dir_deg": "Wind direction ",
     "air_temp_c": "Atmospheric Temperature",
     "air_p_hpa": "Atmospheric Pressure",
+    "rel_hum": "Relative Humidity",
 
     "aac_coppml": "aac(6')-lb-cr",
     "blaTEM_coppml": "blaTEM",
@@ -102,6 +104,7 @@ y_labels = {
     "wind_dir_deg": r"$^\circ$",
     "air_temp_c": r"$^\circ$C",
     "air_p_hpa": "hPa",
+    "rel_hum": "%",
 
     "aac_coppml": "Copies per mL",
     "blaTEM_coppml": "copies per mL",
@@ -744,9 +747,6 @@ def get_errors(true_data, predicted_data, monitor):
     errors = {}
     _er = FindErrors(true_data.reshape(-1, ), predicted_data.reshape(-1, ))
     all_errors = _er.all_methods
-    all_errors.remove('mgd')
-    all_errors.remove('mpd')
-    all_errors.remove('msle')
     for err in all_errors:
         errors[err] = float(getattr(_er, err)())
 
