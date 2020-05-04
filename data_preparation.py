@@ -94,6 +94,8 @@ class DATA(object):
             df = pd.concat([wat_df, env_df, obs_df],
                            axis=1, join_axes=[env_df.index])
 
+            df = df[~df.index.duplicated(keep='last')]
+
             df.to_excel(fpath)
 
         setattr(self, 'columns', list(df.columns))
@@ -210,6 +212,7 @@ class DATA(object):
         """ loads 1 minute data from a site located 10 km from Gwangali.
         The data is from two sites. For each data, the number of nans are comapred and data from that site is accepted
         which contains lower number of nans."""
+        # TODO final_df has some duplicated values, first of those duplicated values are incorrect. Why?
 
         desired_file = os.path.join(self.data_dir, 'env_data_' + self.freq + '.csv')
         if os.path.exists(desired_file):
@@ -234,18 +237,18 @@ class DATA(object):
 
             for fname in files:
                 fpath = os.path.join(d_dir, fname)
-                file_df = pd.read_csv(fpath, sep='\t')
+                file_df_in = pd.read_csv(fpath, sep='\t')
 
                 col_df = pd.DataFrame()
-                col_df_ds = None
+                File_df = pd.DataFrame()
                 for col in cols:  # for each columns in file
                     col_df1 = pd.DataFrame()
                     col_df2 = pd.DataFrame()
                     #  each file contains samples from two sites whose columns have suffix 1 and 2
                     for site in ['1', '2']:
-                        _idx = file_df['Date_Time' + site]
+                        _idx = file_df_in['Date_Time' + site]
                         _col = col + site
-                        _df1 = pd.DataFrame(file_df[_col])
+                        _df1 = pd.DataFrame(file_df_in[_col])
                         _df1 = assign_freq(_df1, _idx, fname + ' ' + col, force_freq='1min', verbosity=self.verbosity-1,
                                            print_only=False)
                         if site == '1':
@@ -271,17 +274,20 @@ class DATA(object):
                             print('for {}, {} is chosen which had {} nans while {} had {} nans'
                                   .format(col, 1, nans_1, 2, nans_2))
 
+                    col_df = pd.DataFrame(col_df[col], index=col_df.index, columns=[col])
                     col_df_ds = down_sample(col_df, col, self.freq, _idx, self.verbosity, fname=fname)
 
-                # here only printing, not forcing it. If index does not have frequency yet, then we are doomed
-                col_df_mit_freq = assign_freq(col_df_ds, file=fname, verbosity=self.verbosity, print_only=True)
+                    # here only printing, not forcing it. If index does not have frequency yet, then we are doomed
+                    col_df_mit_freq = assign_freq(col_df_ds, file=fname, verbosity=self.verbosity, print_only=True)
+                    File_df = pd.concat([File_df, col_df_mit_freq], axis=1)  # axis is 1 as more columns will be added
 
-                haupt_df = pd.concat([haupt_df, col_df_mit_freq])
+                haupt_df = pd.concat([haupt_df, File_df])
 
-            final_df = haupt_df[desired_output]
+            haupt_df_nona = haupt_df.dropna()
+            final_df = haupt_df_nona[desired_output]
+            # final_df = final_df[~final_df.index.duplicated(keep='first')]
             final_df.to_csv(desired_file)
             return final_df
-
 
     def load_rf_data(self):
         desired_file = os.path.join(self.data_dir, 'wat_data_rf_' + self.freq + '.xlsx')
