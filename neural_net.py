@@ -249,7 +249,7 @@ class NeuralNetwork(object):
 
         self.saved_epochs = saved_epochs
         self.losses = {'train_losses': train_epoch_losses,
-                       'val_losses': train_epoch_losses}
+                       'val_losses': val_epoch_losses}
         return saved_epochs, train_epoch_losses, val_epoch_losses
 
     def run_check_point(self, check_point, x_batches, y_batches, scalers):
