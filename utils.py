@@ -41,6 +41,7 @@ colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
           'wind_dir_deg': np.array([0.38079258, 0.17830983, 0.78165943]),
           'ecoli': np.array([0.38079258, 0.17830983, 0.78165943]),
           'air_p_hpa': np.array([0.13778617, 0.06228198, 0.33547859]),
+          'mslp_hpa': np.array([0.13778617, 0.06228198, 0.33547859]),
           'inti1': np.array([0.96707953, 0.46268314, 0.45772886]),
           'Training NSE': np.array([0.13778617, 0.06228198, 0.33547859]),
           'Validation NSE': np.array([0.96707953, 0.46268314, 0.45772886]),
@@ -75,6 +76,7 @@ labels = {
     "wind_dir_deg": "Wind direction ",
     "air_temp_c": "Atmospheric Temperature",
     "air_p_hpa": "Atmospheric Pressure",
+    "mslp_hpa": "Mean Sea Level Pressure",
     "rel_hum": "Relative Humidity",
 
     "aac_coppml": "aac(6')-lb-cr",
@@ -104,6 +106,7 @@ y_labels = {
     "wind_dir_deg": r"$^\circ$",
     "air_temp_c": r"$^\circ$C",
     "air_p_hpa": "hPa",
+    "mslp_hpa": "hPa",
     "rel_hum": "%",
 
     "aac_coppml": "Copies per mL",

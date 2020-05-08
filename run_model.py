@@ -3,7 +3,8 @@ from collections import OrderedDict
 
 from main import Model
 
-in_features = ['pcp_mm','air_p_hpa']
+in_features = ['pcp_mm','tide_cm',
+               'wind_dir_deg', 'wind_speed_mps','mslp_hpa', 'rel_hum']
 out_features = ['blaTEM_coppml']
 
 data_config = OrderedDict()
@@ -27,16 +28,16 @@ train_intervals = [
     [i for i in range(149, 393, BatchSize)],
     [i for i in range(394, 638, BatchSize)],
     [i for i in range(639, 834, BatchSize)],
-    [i for i in range(839, 1100, BatchSize)],
+    [i for i in range(839, 1100, BatchSize)]
 
 ]
 
 test_intervals = [
-    [i for i in range(1100, 1422, BatchSize)]
+    [i for i in range(980, 1398, BatchSize)]
 ]
 
 all_intervals = [
-    [i for i in range(0, 1422, BatchSize)]
+    [i for i in range(0, 1398, BatchSize)]
                  ]
 
 
@@ -51,7 +52,7 @@ nn_config['method'] = 'keras_lstm_layer'
 nn_config['dropout'] = dropout
 nn_config['batch_norm'] = False
 nn_config['lstm_activation'] = None if nn_config['batch_norm'] else act_f
-nn_config['n_epochs'] = 20
+nn_config['n_epochs'] = 1500
 
 nn_config['lookback'] = lookback
 nn_config['input_features'] = len(in_features)
@@ -80,7 +81,7 @@ saved_epochs, losses = model.train_nn()
 errors, neg_predictions = model.predict()
 
 # to load and run checkpoints comment above two lines and uncomment following code
-# path = d = "D:\\dl_jiyi\\models\\20200422_2009"
+# path = d = "C:\\Users\\USER\\Documents\\dl_jiyi\\models\\20200505_1643"
 # model = Model.from_config(path)
 # model.build_nn()
 # model.predict(from_config=True)

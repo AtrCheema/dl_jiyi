@@ -89,4 +89,4 @@ def make_predictions(data_config,
                 fpath = os.path.join(out_path + runtype + '_results.xlsx')
                 ndf.to_excel(fpath)
 
-        return all_errors, neg_predictions
+    return all_errors, neg_predictions
