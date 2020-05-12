@@ -19,7 +19,7 @@ def objective_func(in_features, BatchSize, lookback, lr, lstm_units, act_f):
     nn_config['dropout'] = dropout
     nn_config['batch_norm'] = False
     nn_config['lstm_activation'] = None if nn_config['batch_norm'] else act_f
-    nn_config['n_epochs'] = 20
+    nn_config['n_epochs'] = 15000
 
     nn_config['lookback'] = lookback
     nn_config['input_features'] = len(in_features)
@@ -80,11 +80,11 @@ def objective_func(in_features, BatchSize, lookback, lr, lstm_units, act_f):
 
     model.build_nn()
     model.train_nn()
-    errors, neg_predictions = model.predict(mode='test')
+    # errors, neg_predictions = model.predict(mode='test')
 
     mse = model.losses['val_losses']['mse'][-1]
-    last_epoch = model.nn_config['n_epochs'] - 1
-    k = str(last_epoch) + '_blaTEM_coppml'
-    mse_from_pred = errors['test_errors'][k]['mse']
+    # last_epoch = model.nn_config['n_epochs'] - 1
+    # k = str(last_epoch) + '_blaTEM_coppml'
+    # mse_from_pred = errors['test_errors'][k]['mse']
 
-    return mse, mse_from_pred
+    return mse  #, mse_from_pred

@@ -67,15 +67,14 @@ def fitness(batch_size, lookback, lr, lstm_units, act_f,
           """.format(in_features, batch_size, lookback, lr, lstm_units, act_f)
     print(msg)
 
-    error, pred_er = objective_func(in_features, BatchSize=batch_size,
+    error = objective_func(in_features, BatchSize=batch_size,
                                     lookback=int(lookback),
-                                    lr=lr,
+                                    lr=float(lr),
                                     lstm_units=int(lstm_units),
                                     act_f=act_f)
 
     msg = """\nwith in_features {}, batch_size {}, lookback {} lr {} lstm_units {} activation {} val loss is {}
-          pred_error is {}
-          """.format(in_features, batch_size, lookback, lr, lstm_units, act_f, error, pred_er)
+          """.format(in_features, batch_size, lookback, lr, lstm_units, act_f, error)
     print(msg)
     with open('opt_results.txt', 'a') as fp:
         fp.write(msg)
@@ -86,6 +85,6 @@ def fitness(batch_size, lookback, lr, lstm_units, act_f,
 search_result = gp_minimize(func=fitness,
                             dimensions=dimensions,
                             acq_func='EI',   # Expected Improvement.
-                            n_calls=20,
+                            n_calls=30,
                             # acq_optimizer='auto',
                             x0=default_values)
