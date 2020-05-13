@@ -1,7 +1,14 @@
 
 from collections import OrderedDict
+import tensorflow as tf
+
 
 from main import Model
+
+
+def reset_graph():
+    tf.compat.v1.reset_default_graph()
+    tf.keras.backend.clear_session()
 
 
 def objective_func(in_features, BatchSize, lookback, lr, lstm_units, act_f):
@@ -80,11 +87,13 @@ def objective_func(in_features, BatchSize, lookback, lr, lstm_units, act_f):
 
     model.build_nn()
     model.train_nn()
-    # errors, neg_predictions = model.predict(mode='test')
+    errors, neg_predictions = model.predict(mode='test')
 
     mse = model.losses['val_losses']['mse'][-1]
-    # last_epoch = model.nn_config['n_epochs'] - 1
-    # k = str(last_epoch) + '_blaTEM_coppml'
-    # mse_from_pred = errors['test_errors'][k]['mse']
+    last_epoch = model.nn_config['n_epochs'] - 1
+    k = str(last_epoch) + '_blaTEM_coppml'
+    mse_from_pred = errors['test_errors'][k]['mse']
 
-    return mse  #, mse_from_pred
+    reset_graph()
+
+    return mse, mse_from_pred
