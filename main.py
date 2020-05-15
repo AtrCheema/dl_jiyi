@@ -44,7 +44,8 @@ class Model(nn):
         self.verbosity = verbosity
         self._validate_input()
         self.batches = {}
-        self.path = maybe_create_path(path=path)
+        self.path = maybe_create_path(prefix='test_opt', path=path)
+        self._from_config = False if path is None else True
 
         super(Model, self).__init__(nn_config=nn_config, verbosity=verbosity)
 
@@ -181,7 +182,7 @@ class Model(nn):
         config['final_comment'] = """ """
         config['negative_predictions'] = neg_predictions
 
-        save_config_file(config, self.path)
+        save_config_file(config, self.path, from_config=self._from_config)
         return config
 
     def handle_losses(self):
@@ -214,6 +215,7 @@ class Model(nn):
                    nn_config=nn_config,
                    args=args,
                    intervals=intervals,
+                   path=_path,
                    verbosity=1)
 
     def _validate_input(self):

@@ -46,7 +46,7 @@ colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
           'Training NSE': np.array([0.13778617, 0.06228198, 0.33547859]),
           'Validation NSE': np.array([0.96707953, 0.46268314, 0.45772886]),
           'aac_coppml': np.array([0.17221373, 0.53023578, 0.96788307]),
-          'blaTEM_coppml': np.array([0.49902624, 0.93245149, 0.12125226]),
+          'blaTEM_coppml': np.array([0.66413778, 0.35891819, 0.69004812]),
           'Total_otus': np.array([0.92875036, 0.09364162, 0.33348078]),
           'Total_args': np.array([0.93950089, 0.64582256, 0.16928645]),
           'tetx_coppml': np.array([0.06802773, 0.46382623, 0.49007703]),
@@ -55,8 +55,8 @@ colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
           'sul1_coppml': np.array([0.26900851, 0.96337978, 0.94641933]),
           'otu_273': np.array([0.95896577, 0.58394066, 0.04189788]),
           '16s': np.array([0.17877267, 0.78893675, 0.92613355]),
-          'true': np.array([0.49902624, 0.93245149, 0.12125226]),
-          'rel_hum':  np.array([0.49902624, 0.93245149, 0.12125226]),
+          'true': np.array([0.94577241, 0.08725546, 0.11906984]),
+          # 'rel_hum':  np.array([0.56884807 0.27000573 0.03299844])
           }
 
 
@@ -161,7 +161,7 @@ def process_axis(axis,
     in_label = label
     if label in labels:
         label = labels[label]
-    axis.plot(data, style, markersize=ms, color=c, label=label)
+    axis.plot(data, style, markersize=ms, color=c, label=label, linewidth=ms)
 
     ylc = c
     if yl_c != 'same':
@@ -252,28 +252,28 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
                 style = '-'
                 invert_yaxis = True
             _data = data[cols[idx]][st:en].values
-            process_axis(ax, _data, style='*', ms=8, c=colors[cols[idx]])
-            process_axis(ax, _data, style=style, ms=6, label=cols[idx], show_xaxis=False, bottom_spine=False, leg_fs=14,
+            process_axis(ax, _data, style='o', ms=4, label=cols[idx])
+            process_axis(ax, _data, style=style, ms=4, label=cols[idx], show_xaxis=False, bottom_spine=False, leg_fs=14,
                          invert_yaxis=invert_yaxis, verbose=True)
 
         elif idx == no_of_plots-1:  # last
             if single_ax_plots is not None:
                 for col in single_ax_plots:
                     val = col
-                    ms = 8
+                    ms = 4
                     style = '-'
-                    if val == 'Excluded from training':
+                    if val in ['true', 'Excluded from training']:
                         ms = 12
                         style = '*'
 
                     _data = data[col][st:en].values
-                    process_axis(ax, _data, style='*', ms=ms, c=colors[val])
-                    process_axis(ax, _data, style=style, ms=ms, label=val, leg_fs=14, leg_pos='upper left',
+                    # process_axis(ax, _data, style='*', ms=ms, label=val, verbose=True)
+                    process_axis(ax, _data, style=style, ms=ms, leg_ms=1, label=val, leg_fs=14, leg_pos='upper left',
                                  verbose=True)
             else:
                 val = cols[idx]
                 _data = data[cols[idx]][st:en].values
-                process_axis(ax, _data, style='*', ms=10, c=colors[val], log=obs_logy)
+                process_axis(ax, _data, style='*', ms=10, c=colors[val], log=obs_logy, verbose=True)
                 process_axis(ax, _data, style='-', ms=9,  label=val, leg_fs=14, verbose=True, log=obs_logy)
 
         elif idx == 0:  # first plot
@@ -283,13 +283,13 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
             if 'pcp' in cols[idx]:
                 style = '-'
                 invert_yaxis = True
-            process_axis(ax, _data, style='*', ms=8, c=colors[val])
-            process_axis(ax, _data, style='-', ms=6,  label=val, show_xaxis=False, bottom_spine=False, leg_fs=14,
+            process_axis(ax, _data, style='o', ms=8, c=colors[val])
+            process_axis(ax, _data, style='-', ms=4,  label=val, show_xaxis=False, bottom_spine=False, leg_fs=14,
                          verbose=True, invert_yaxis=invert_yaxis)
 
         idx += 1
 
-    plt.subplots_adjust(wspace=0.05, hspace=0.01)
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
     if save_name:
         plt.savefig(save_name, dpi=300, bbox_inches='tight')
     plt.close()
@@ -641,24 +641,7 @@ def nan_to_num(array, outs, replace_with=0.0):
 
 def maybe_create_path(prefix=None, path=None):
     if path is None:
-        jetzt = datetime.datetime.now()
-        jahre = str(jetzt.year)
-        month = str(jetzt.month)
-        if len(month) < 2:
-            month = '0' + month
-        tag = str(jetzt.day)
-        if len(tag) < 2:
-            tag = '0' + tag
-        date = jahre + month + tag
-
-        stunde = str(jetzt.hour)
-        if len(stunde) < 2:
-            stunde = '0' + stunde
-        minute = str(jetzt.minute)
-        if len(minute) < 2:
-            minute = '0' + minute
-
-        save_dir = date + '_' + stunde + str(minute)
+        save_dir = dateandtime_now()
         model_dir = os.path.join(os.getcwd(), "models")
 
         if prefix:
@@ -758,8 +741,36 @@ def get_errors(true_data, predicted_data, monitor):
     return errors
 
 
-def save_config_file(config, _path):
-    config_file = _path + "/config.json"
+def dateandtime_now():
+    jetzt = datetime.datetime.now()
+    jahre = str(jetzt.year)
+    month = str(jetzt.month)
+    if len(month) < 2:
+        month = '0' + month
+    tag = str(jetzt.day)
+    if len(tag) < 2:
+        tag = '0' + tag
+    date = jahre + month + tag
+
+    stunde = str(jetzt.hour)
+    if len(stunde) < 2:
+        stunde = '0' + stunde
+    minute = str(jetzt.minute)
+    if len(minute) < 2:
+        minute = '0' + minute
+
+    save_dir = date + '_' + stunde + str(minute)
+    return save_dir
+
+
+def save_config_file(config, _path, from_config=False):
+
+    if from_config:
+        suffix = dateandtime_now()
+        config_file = _path + "/config" + suffix + ".json"
+    else:
+        config_file = _path + "/config.json"
+
     with open(config_file, 'w') as fp:
         json.dump(config, fp, sort_keys=True, indent=4)
 
@@ -795,8 +806,8 @@ def plot_bact_points(true, pred, _name):
 
     process_axis(ax, true, style='b.', c='b', ms=5)
     process_axis(ax, true, style='b-', c='b', ms=2, label="True", leg_fs=12, leg_ms=4)
-    process_axis(ax, pred, style='r*', c='r', ms=6, y_label="MPN", yl_fs=14)
-    process_axis(ax, pred, style='r-', c='r', ms=2, label='Predicted', leg_fs=12, leg_ms=4, y_label="MPN", yl_fs=14,
+    process_axis(ax, pred, style='r*', c='r', ms=6, y_label="ARGs(copies/mL)", yl_fs=14)
+    process_axis(ax, pred, style='r-', c='r', ms=2, label='Predicted', leg_fs=12, leg_ms=4, y_label="ARGs(copies/mL)", yl_fs=14,
                  x_label="No. of Observations", xl_fs=14)
     plt.savefig(_name, dpi=300, bbox_inches='tight')
     plt.close(fig)
