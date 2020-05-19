@@ -446,9 +446,13 @@ class BatchGenerator(object):
             if self.verbose > 1:
                 print('Potential intervals: {}'.format(interval))
             interval = np.append(interval, pot_samples)
+            interval = check_interval_validity(interval, x_wins.shape[0])
 
         else:
             interval = predef_interval
+            # x_wins may have shape smaller than than data, and interval was based on data, so we need to make sure
+            # that values in interval do not exceed length of x_wins
+            interval = check_interval_validity(list(interval), x_wins.shape[0])
             if trim_last_batch:
                 inf_bat_sz = np.unique(np.diff(np.array(predef_interval)))  # inferred batch size
             else:
@@ -588,6 +592,15 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
     return x_batches, y_batches, no_of_batches_recalc
 
 
+def check_interval_validity(interval, check_against):
+
+    interval2 = interval.copy()
+    for val in interval:
+        if val > check_against:
+            interval2.remove(val)
+    return interval2
+
+
 def generate_event_based_batches(data, batch_size, args, predef_intervals, verbosity=1,
                                  raise_error=True,
                                  skip_batch_with_no_labels=False):
@@ -599,6 +612,8 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
     no_of_batches = 0
 
     for event_intvl in predef_intervals:
+        # no value in interval should be greater than length of data
+        event_intvl = check_interval_validity(event_intvl, data.shape[0])
 
         event_intvl = np.array(event_intvl)  # convert to numpy array if not already
 
