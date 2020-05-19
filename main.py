@@ -44,10 +44,13 @@ class Model(nn):
         self.verbosity = verbosity
         self._validate_input()
         self.batches = {}
-        self.path = maybe_create_path(prefix='test_opt', path=path)
+        self.path = maybe_create_path(prefix='hyper_opt', path=path)
         self._from_config = False if path is None else True
 
-        super(Model, self).__init__(nn_config=nn_config, verbosity=verbosity)
+        super(Model, self).__init__(nn_config=nn_config,
+                                    data_config=data_config,
+                                    path = self.path,
+                                    verbosity=verbosity)
 
     def pre_process_data(self):
         in_features = self.data_config['in_features']
@@ -122,10 +125,11 @@ class Model(nn):
 
         self.handle_losses()
 
-        saved_unique_cp = copy_check_points(self.saved_epochs, self.path)
+        saved_unique_cp = copy_check_points(self.saved_epochs, os.path.join(self.path, 'check_points'))
         self.data_config['saved_unique_cp'] = saved_unique_cp
 
         self.save_config()
+        self.remove_redundant_epochs()
 
         return self.saved_epochs, self.losses
 
@@ -230,6 +234,24 @@ class Model(nn):
 
         validate_dictionary(self.args, ARGS_KEYS, 'args')
 
+    def remove_redundant_epochs(self):
+        all_epochs = find_saved_epochs(os.path.join(self.path, 'check_points'))
+        all_ep = [int(i) for i in all_epochs]
+        to_keep = list(self.saved_epochs.values())
+        to_del = []
+        for epoch in all_ep:
+            if epoch not in to_keep:
+                to_del.append(epoch)
+
+        for epoch in to_del:
+            fpath = os.path.join(self.path, 'check_points')
+            files = ['.index', '.meta', '.data-00000-of-00001']
+            for f in files:
+                fname = os.path.join(fpath, 'checkpoints-' + str(epoch) + f)
+                if os.path.exists(fname):
+                    os.remove(fname)
+
+
 
 def _get_mode(mode):
 
@@ -247,3 +269,9 @@ def _get_mode(mode):
                 if m not in def_mode:
                     raise ValueError("{} not allowed".format(m))
     return mode
+
+
+def find_saved_epochs(_path):
+    idx_files = [f for f in os.listdir(_path) if f.endswith('.index')]
+    saved_epochs = [f.split('-')[1].split('.')[0] for f in idx_files]
+    return list(np.unique(saved_epochs))

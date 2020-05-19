@@ -27,7 +27,7 @@ def make_predictions(data_config,
         sub_path = _path + '/' + str(ep)
         maybe_create_path(path=sub_path)
 
-        check_point = "check_points-" + str(ep)
+        check_point = "checkpoints-" + str(ep)
 
         x_data, test_y_pred, test_y_true = model.run_check_point(check_point=check_point,
                                                                  x_batches=x_batches,

@@ -35,8 +35,10 @@ gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.7)
 
 class NeuralNetwork(object):
 
-    def __init__(self, nn_config, verbosity=1):
+    def __init__(self, nn_config, data_config, path, verbosity=1):
+        self.data_config = data_config
         self.nn_config = nn_config
+        self.path = path
         self.x_ph = None
         self.mask_ph = None
         self.obs_y_ph = None
@@ -119,6 +121,11 @@ class NeuralNetwork(object):
 
     def train(self, train_batches, val_batches, monitor):
 
+        cp_path = os.path.join(self.path, 'check_points')
+        if not os.path.exists(cp_path):
+            os.makedirs(cp_path)
+        setattr(self, 'cp_dir', cp_path)
+
         train_x = train_batches[0]
         train_y = train_batches[1]
         val_x = val_batches[0]
@@ -138,7 +145,7 @@ class NeuralNetwork(object):
         train_epoch_losses = OrderedDict({key: [] for key in monitor})
         val_epoch_losses = OrderedDict({key: [] for key in monitor})
 
-        save_path = os.path.join(os.getcwd(), 'check_points')
+        save_path = os.path.join(os.getcwd(), 'checkpoints')
 
         st_t, self.nn_config['start_time'] = time.time(), time.asctime()
 
@@ -224,12 +231,12 @@ class NeuralNetwork(object):
                                                     ps, save_fg, to_save)
 
                 if save_fg:
-                    self.saver.save(sess, save_path=save_path,  global_step=epoch)
+                    self.saver.save(sess, save_path=os.path.join(cp_path, 'checkpoints'),  global_step=epoch)
 
                 print(epoch, ps)
 
                 if epoch > (self.nn_config['n_epochs']-2):
-                    self.saver.save(sess, save_path=save_path,  global_step=epoch)
+                    self.saver.save(sess, save_path=os.path.join(cp_path, 'checkpoints'),  global_step=epoch)
 
         en_t, self.nn_config['end_time'] = time.time(), time.asctime()
         train_time = (en_t - st_t) / 60.0 / 60.0
@@ -257,7 +264,7 @@ class NeuralNetwork(object):
         n_outs = self.nn_config['output_features']
 
         with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
-            self.saver.restore(sess, check_point)
+            self.saver.restore(sess, os.path.join(self.cp_dir, check_point))
 
             # evaluating model on training data
             test_iterations = len(x_batches)
@@ -277,18 +284,22 @@ class NeuralNetwork(object):
                 y_pred = sess.run(self.full_outputs,
                                   feed_dict={self.x_ph: test_x_batch, self.mask_ph: mask_y_batch.reshape(-1, 1)})
 
-                y_scaler = scalers[str(list(scalers.keys())[-1])]
-                y_pred_un = y_scaler.inverse_transform(y_pred.reshape(-1, n_outs))
-                mask_y_batch_un = y_scaler.inverse_transform(mask_y_batch.reshape(-1, n_outs))
+                if self.data_config['normalize']:
+                    y_scaler = scalers[str(list(scalers.keys())[-1])]
+                    y_pred = y_scaler.inverse_transform(y_pred.reshape(-1, n_outs))
+                    mask_y_batch = y_scaler.inverse_transform(mask_y_batch.reshape(-1, n_outs))
 
-                test_y_pred[st:en, :] = y_pred_un.reshape(-1, n_outs)
-                test_y_true[st:en, :] = mask_y_batch_un.reshape(-1, n_outs)
+                test_y_pred[st:en, :] = y_pred.reshape(-1, n_outs)
+                test_y_true[st:en, :] = mask_y_batch.reshape(-1, n_outs)
 
                 for dat in range(self.nn_config['input_features']):
                     value = test_x_batch[:, -1, dat].reshape(-1, 1)
-                    val_scaler = scalers[str(dat) + '_scaler']
-                    new_value = val_scaler.inverse_transform(value.reshape(-1, 1))
-                    x_data[st:en, dat] = new_value.reshape(-1, )
+
+                    if self.data_config['normalize']:
+                        val_scaler = scalers[str(dat) + '_scaler']
+                        value = val_scaler.inverse_transform(value.reshape(-1, 1))
+
+                    x_data[st:en, dat] = value.reshape(-1, )
 
                 st += self.nn_config['batch_size']
                 en += self.nn_config['batch_size']

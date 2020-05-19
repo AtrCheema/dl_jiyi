@@ -726,20 +726,21 @@ def plot_loss(train_loss_array, test_loss_array, _name, _path):
     plt.close(_fig)
 
 
-def copy_check_points(_saved_epochs, _path):
+def copy_check_points(_saved_epochs, cp_path):
     ch_points_to_copy = np.unique(list(_saved_epochs.values()))
     cp_to_copy = ch_points_to_copy[ch_points_to_copy != 0]  # removing zeros
     cp_to_copy = cp_to_copy[cp_to_copy != 1]
     cp_copied = []
     for chpt in cp_to_copy:
-        data_file = os.path.join(os.getcwd(), "check_points-" + str(chpt) + ".data-00000-of-00001")
+        data_file = os.path.join(cp_path, "checkpoints-" + str(chpt) + ".data-00000-of-00001")
         if os.path.exists(data_file):
             cp_copied.append(chpt)
-            copyfile(data_file, os.path.join(_path, "check_points-" + str(chpt) + ".data-00000-of-00001"))
-            idx_file = os.path.join(os.getcwd(), "check_points-" + str(chpt) + ".index")
-            copyfile(idx_file, os.path.join(_path, "check_points-" + str(chpt) + ".index"))
-            meta_file = os.path.join(os.getcwd(), "check_points-" + str(chpt) + ".meta")
-            copyfile(meta_file, os.path.join(_path, "check_points-" + str(chpt) + ".meta"))
+            dstn_folder = os.path.dirname(cp_path)
+            copyfile(data_file, os.path.join(dstn_folder, "checkpoints-" + str(chpt) + ".data-00000-of-00001"))
+            idx_file = os.path.join(cp_path, "checkpoints-" + str(chpt) + ".index")
+            copyfile(idx_file, os.path.join(dstn_folder, "checkpoints-" + str(chpt) + ".index"))
+            meta_file = os.path.join(cp_path, "checkpoints-" + str(chpt) + ".meta")
+            copyfile(meta_file, os.path.join(dstn_folder, "checkpoints-" + str(chpt) + ".meta"))
 
     return [int(cp) for cp in cp_copied]
 
