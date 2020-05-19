@@ -125,6 +125,8 @@ class Model(nn):
         saved_unique_cp = copy_check_points(self.saved_epochs, self.path)
         self.data_config['saved_unique_cp'] = saved_unique_cp
 
+        self.save_config()
+
         return self.saved_epochs, self.losses
 
     def predict(self, mode=None, **kwargs):
@@ -165,7 +167,7 @@ class Model(nn):
 
         return errors, neg_predictions
 
-    def save_config(self, errors, neg_predictions):
+    def save_config(self, errors=None, neg_predictions=None):
 
         config = OrderedDict()
         config['comment'] = 'use point source pollutant data along with best model from grid search'

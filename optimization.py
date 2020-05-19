@@ -11,7 +11,14 @@ def reset_graph():
     tf.keras.backend.clear_session()
 
 
-def objective_func(in_features, BatchSize, lookback, lr, lstm_units, act_f):
+def objective_func(BatchSize, lookback, lr, lstm_units, act_f='relu'):
+
+    in_features = ['pcp_mm', 'tide_cm',
+                   'wat_temp_c',
+                   'air_temp_c',
+                   'sal_psu',
+                   'wind_dir_deg',
+                   'wind_speed_mps', 'mslp_hpa', 'rel_hum']
 
     out_features = ['blaTEM_coppml']
 
