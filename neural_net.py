@@ -8,6 +8,7 @@ from tensorflow.python.ops.rnn import dynamic_rnn
 from TSErrors import FindErrors
 
 from utils import check_min_loss
+from utils import AttributeNotSetYet
 from leaky_dense import LeakyDense2D
 from tensor_losses import *
 
@@ -33,22 +34,37 @@ def reset_graph(seed=2):
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.7)
 
 
-class NeuralNetwork(object):
+class NNAttr(object):
+
+    x_ph = AttributeNotSetYet('build')
+    mask_ph = AttributeNotSetYet('build')
+    obs_y_ph = AttributeNotSetYet('build')
+    full_outputs = AttributeNotSetYet('build')
+    training_op = AttributeNotSetYet('build')
+    loss = AttributeNotSetYet('build')
+    saver = AttributeNotSetYet('build')
+    saved_epochs = AttributeNotSetYet('train')
+    losses = AttributeNotSetYet('train')
+
+    def __init__(self):
+        pass
+
+
+class NeuralNetwork(NNAttr):
 
     def __init__(self, nn_config, data_config, path, verbosity=1):
         self.data_config = data_config
         self.nn_config = nn_config
         self.path = path
-        self.x_ph = None
-        self.mask_ph = None
-        self.obs_y_ph = None
-        self.full_outputs = None
-        self.training_op = None
-        self.loss = None
-        self.saver = None
-        self.saved_epochs = None
-        self.losses = None
         self.verbose = verbosity
+        super(NeuralNetwork, self).__init__()
+
+    @property
+    def cp_dir(self):
+        cp_path = os.path.join(self.path, 'check_points')
+        if not os.path.exists(cp_path):
+            os.makedirs(cp_path)
+        return cp_path
 
     def build(self):
 
@@ -121,11 +137,6 @@ class NeuralNetwork(object):
 
     def train(self, train_batches, val_batches, monitor):
 
-        cp_path = os.path.join(self.path, 'check_points')
-        if not os.path.exists(cp_path):
-            os.makedirs(cp_path)
-        setattr(self, 'cp_dir', cp_path)
-
         train_x = train_batches[0]
         train_y = train_batches[1]
         val_x = val_batches[0]
@@ -144,8 +155,6 @@ class NeuralNetwork(object):
 
         train_epoch_losses = OrderedDict({key: [] for key in monitor})
         val_epoch_losses = OrderedDict({key: [] for key in monitor})
-
-        save_path = os.path.join(os.getcwd(), 'checkpoints')
 
         st_t, self.nn_config['start_time'] = time.time(), time.asctime()
 
@@ -231,12 +240,12 @@ class NeuralNetwork(object):
                                                     ps, save_fg, to_save)
 
                 if save_fg:
-                    self.saver.save(sess, save_path=os.path.join(cp_path, 'checkpoints'),  global_step=epoch)
+                    self.saver.save(sess, save_path=os.path.join(self.cp_dir, 'checkpoints'),  global_step=epoch)
 
                 print(epoch, ps)
 
                 if epoch > (self.nn_config['n_epochs']-2):
-                    self.saver.save(sess, save_path=os.path.join(cp_path, 'checkpoints'),  global_step=epoch)
+                    self.saver.save(sess, save_path=os.path.join(self.cp_dir, 'checkpoints'),  global_step=epoch)
 
         en_t, self.nn_config['end_time'] = time.time(), time.asctime()
         train_time = (en_t - st_t) / 60.0 / 60.0
