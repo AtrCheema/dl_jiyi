@@ -8,6 +8,7 @@ from utils import validate_dictionary
 from utils import save_config_file
 from utils import plot_loss
 from utils import copy_check_points
+from utils import AttributeNotSetYet
 from post_processing import make_predictions
 
 import os
@@ -28,7 +29,15 @@ INTERVALS_KEYS = ['train_intervals', 'test_intervals', 'all_intervals']
 ARGS_KEYS = ['train_args', 'test_args', 'all_args']
 
 
-class Model(nn):
+class ModelAttr(object):
+
+    scalers = AttributeNotSetYet('build_nn')
+
+    def __init__(self):
+        pass
+
+
+class Model(nn, ModelAttr):
 
     def __init__(self, data_config,
                  nn_config,
@@ -44,12 +53,12 @@ class Model(nn):
         self.verbosity = verbosity
         self._validate_input()
         self.batches = {}
-        self.path = maybe_create_path(prefix='hyper_opt', path=path)
+        self.path = maybe_create_path(path=path)
         self._from_config = False if path is None else True
 
         super(Model, self).__init__(nn_config=nn_config,
                                     data_config=data_config,
-                                    path = self.path,
+                                    path=self.path,
                                     verbosity=verbosity)
 
     def pre_process_data(self):
@@ -66,34 +75,46 @@ class Model(nn):
         if self.verbosity > 0:
             print('shape of whole dataset', df.shape)
 
-        dataset = nan_to_num(df.values, len(out_features), replace_with=0.0)
+        # assuming that pandas will add the 'datetime' column as last column. This columns will only be used to keep
+        # track of indices of train and test data.
+        df['datetime'] = list(map(int, np.array(df.index.strftime('%Y%m%d%H%M'))))
 
-        scalers = None
+        # columns containing target data (may) have nan values because missing values are represented by nans
+        # so convert those nans 0s. This is with a big assumption that the actual target data does not contain 0s.
+        # they are converted to zeros because in LSTM and at other places as well we will select the data based on mask
+        # such as values>0.0 and if target data has zeros, we can not do this.
+        dataset = nan_to_num(df.values, len(out_features)+1, replace_with=0.0)
+
         if self.data_config['normalize']:
-            dataset, scalers = normalize_data(dataset)
+            dataset, self.scalers = normalize_data(dataset)
 
-        return dataset, scalers
+        return dataset  # , scalers
 
     def get_batches(self, dataset):
 
-        train_x, train_y, train_no_of_batches = generate_event_based_batches(dataset,
-                                                                             self.nn_config['batch_size'],
-                                                                             self.args['train_args'],
-                                                                             self.intervals['train_intervals'],
-                                                                             self.verbosity,
-                                                                             skip_batch_with_no_labels=True)
+        train_x, train_y, train_no_of_batches, train_indexes,\
+            self.data_config['no_of_train_samples'] = generate_event_based_batches(dataset,
+                                                                                   self.nn_config['batch_size'],
+                                                                                   self.args['train_args'],
+                                                                                   self.intervals['train_intervals'],
+                                                                                   self.verbosity,
+                                                                                   skip_batch_with_no_labels=True)
 
-        test_x, test_y, test_no_of_batches = generate_event_based_batches(dataset, self.nn_config['batch_size'],
-                                                                          self.args['train_args'],
-                                                                          self.intervals['test_intervals'],
-                                                                          self.verbosity,
-                                                                          skip_batch_with_no_labels=True)
+        test_x, test_y, test_no_of_batches, test_index,\
+            self.data_config['no_of_test_samples'] = generate_event_based_batches(dataset,
+                                                                                  self.nn_config['batch_size'],
+                                                                                  self.args['train_args'],
+                                                                                  self.intervals['test_intervals'],
+                                                                                  self.verbosity,
+                                                                                  skip_batch_with_no_labels=True)
 
-        all_x, all_y, all_no_of_batches = generate_event_based_batches(dataset, self.nn_config['batch_size'],
-                                                                       self.args['train_args'],
-                                                                       self.intervals['all_intervals'],
-                                                                       self.verbosity-1,
-                                                                       raise_error=False)
+        all_x, all_y, all_no_of_batches, all_indexes,\
+            self.data_config['no_of_all_samples'] = generate_event_based_batches(dataset,
+                                                                                 self.nn_config['batch_size'],
+                                                                                 self.args['train_args'],
+                                                                                 self.intervals['all_intervals'],
+                                                                                 self.verbosity-1,
+                                                                                 raise_error=False)
 
         self.nn_config['train_no_of_batches'] = train_no_of_batches
         self.nn_config['test_no_of_batches'] = test_no_of_batches
@@ -105,11 +126,14 @@ class Model(nn):
         self.batches['test_y'] = test_y
         self.batches['all_x'] = all_x
         self.batches['all_y'] = all_y
+        self.batches['train_index'] = train_indexes.astype(np.int64)
+        self.batches['test_index'] = test_index.astype(np.int64)
+        self.batches['all_index'] = all_indexes.astype(np.int64)
         return
 
     def build_nn(self):
 
-        dataset, _ = self.pre_process_data()
+        dataset = self.pre_process_data()
 
         self.get_batches(dataset)
 
@@ -133,36 +157,26 @@ class Model(nn):
 
         return self.saved_epochs, self.losses
 
-    def predict(self, mode=None, **kwargs):
+    def predict(self, mode=None):
         """
-
         :param mode: list or str, if list then all members must be str default is ['train', 'test', 'all']
-        :param kwargs: if `from_config` is present in kwargs, then predictions will be made based on checkpoints saved
-                     in self.path
         :return: errors, dictionary of errors from each mode
                  neg_predictions, dictionary of negative prediction from each mode
         """
-        dataset, scalers = self.pre_process_data()
 
         mode = _get_mode(mode)
 
         epochs_to_evaluate = self.data_config['saved_unique_cp']
-        if 'from_config' in kwargs:
-            self.get_batches(dataset)
 
         errors = {}
         neg_predictions = {}
         for m in mode:
-            _errors, _neg_predictions = make_predictions(data_config=self.data_config,
-                                                         x_batches=self.batches[m + '_x'],  # like `train_x` or `val_x`
+            _errors, _neg_predictions = make_predictions(x_batches=self.batches[m + '_x'],  # like `train_x` or `val_x`
                                                          y_batches=self.batches[m + '_y'],
                                                          model=self,
                                                          epochs_to_evaluate=epochs_to_evaluate,
-                                                         _path=self.path,
-                                                         scalers=scalers,
-                                                         runtype='_' + m,
-                                                         save_results=True,
-                                                         verbose=self.verbosity)
+                                                         runtype=m,
+                                                         save_results=True)
 
             errors[m + '_errors'] = _errors
             neg_predictions[m + '_neg_predictions'] = _neg_predictions
@@ -250,7 +264,6 @@ class Model(nn):
                 fname = os.path.join(fpath, 'checkpoints-' + str(epoch) + f)
                 if os.path.exists(fname):
                     os.remove(fname)
-
 
 
 def _get_mode(mode):

@@ -12,8 +12,10 @@ import seaborn as sns
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
-plt.rcParams["font.family"] = "Times New Roman"
+from weakref import WeakKeyDictionary
 import matplotlib.dates as mdates
+
+plt.rcParams["font.family"] = "Times New Roman"
 
 
 def random_array(_length, lower=0.0, upper=0.5):
@@ -224,6 +226,10 @@ def set_fig_dim(fig, width, height):
 def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_ms=4, obs_logy=False, p_ylim=None,
             single_ax_plots=None):
 
+    # plotting zeros just clutters the space and is of no purpose
+    data = data.copy()
+    data = data.replace(['0', 0], np.nan)
+
     if st is None:
         st = data.index[0]
     if en is None:
@@ -263,7 +269,7 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
                     ms = 4
                     style = '-'
                     if val in ['true', 'Excluded from training']:
-                        ms = 12
+                        ms = 10
                         style = '*'
 
                     _data = data[col][st:en].values
@@ -281,7 +287,6 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
             _data = data[val][st:en].values
             invert_yaxis = False
             if 'pcp' in cols[idx]:
-                style = '-'
                 invert_yaxis = True
             process_axis(ax, _data, style='o', ms=8, c=colors[val])
             process_axis(ax, _data, style='-', ms=4,  label=val, show_xaxis=False, bottom_spine=False, leg_fs=14,
@@ -312,7 +317,35 @@ def first_nan_from_end(ar):
     return ar.shape[0] - last_non_zero
 
 
-class BatchGenerator(object):
+class AttributeNotSetYet:
+    """ a class which will just make sure that attributes are set at its childs class level and not here.
+    It's purpose is just to avoid cluttering of __init__ method of its child classes. """
+    def __init__(self, func_name):
+        self.data = WeakKeyDictionary()
+        self.func_name = func_name
+
+    def __get__(self, instance, owner):
+        raise AttributeError("run the function {} first to get {}".format(self.func_name, self.name))
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+
+class BatchGeneratorAttr(object):
+
+    min_ind = AttributeNotSetYet('check_and_initiate_batch')
+    max_ind = AttributeNotSetYet('check_and_initiate_batch')
+    residue = AttributeNotSetYet('check_and_initiate_batch')
+    samples = AttributeNotSetYet('check_and_initiate_batch')
+    ignoriert_am_anfang = AttributeNotSetYet('check_and_initiate_batch')
+    ignoriert_am_ende = AttributeNotSetYet('check_and_initiate_batch')
+    no_of_batches = AttributeNotSetYet('check_and_initiate_batch')
+
+    def __init__(self):
+        pass
+
+
+class BatchGenerator(BatchGeneratorAttr):
     """
     :param data: `ndarray`, input data.
     :param args: a dictionary containing values of parameters depending upon method used.
@@ -338,9 +371,7 @@ class BatchGenerator(object):
         self.args = args
         self.method = method
         self.verbose = verbose
-        self.ignoriert_am_anfang = None
-        self.ignoriert_am_ende = None
-        self.no_of_batches = None
+        super(BatchGenerator, self).__init__()
     
     def __len__(self):
         return self.args['min_ind'] - self.args['max_ind']
@@ -503,10 +534,14 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
     :param generator_object:
     :param _batch_generator:
     :param verbose:
-    :param raise_error:
+    :param raise_error: This option can be turned off for creating e.g. test dataset where we don't care
+           about labels that whether they are present or not. This is usefull where we care about only
+           predictions from our data.
     :param skip_batch_with_no_labels: if True, then those batches which have no labels will be ignored altogether. In
       such a case, argument `raise_error` will be rendered useless. This should be used only to generate training data,
-      if we want to optimize batch size, because this option will allow us to have flexible batch size.
+      if we want to optimize batch size, because this option will allow us to have flexible batch size. If out_features
+      are more than one, then if any feature has 0 sample for a given batch, that whole batch will be missed, no matter
+      if other out_features have samples in this batch or not.
     :return:
     """
     x_batch, mask_y_batch = next(_batch_generator)
@@ -589,7 +624,7 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
         print('total observations: ', total_bact_samples)
         print('*********************************\n')
 
-    return x_batches, y_batches, no_of_batches_recalc
+    return x_batches, y_batches, no_of_batches_recalc, total_bact_samples
 
 
 def check_interval_validity(interval, check_against):
@@ -605,10 +640,17 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
                                  raise_error=True,
                                  skip_batch_with_no_labels=False):
     args = deepcopy(args)
-    events = len(predef_intervals)
+    # increasing out_feature by 1 here because the last column in `data` consists of datetime, which is not actually
+    # part of data but we want batches from that column as well similar to that of batches of target data.
+    args['out_features'] = args['out_features'] + 1
+    # container to store number of samples present for each out_feature.
+    # 1 is subtracted because last column is datetime and is not part of actual data, so no need to save number of
+    # sampes in that column
+    no_of_samples = {key: 0 for key in range(args['out_features']-1)}
 
     x_batches = []
     y_batches = []
+    index_batches = np.array(0.0)  # container to hold batches of indexes from all inervals
     no_of_batches = 0
 
     for event_intvl in predef_intervals:
@@ -628,27 +670,33 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
 
         event_x_batches,\
             event_y_batches,\
-            _no_of_batches = check_and_initiate_batch(event_generator,
+            _no_of_batches, \
+            _no_of_samples = check_and_initiate_batch(event_generator,
                                                       _gen, verbosity,
                                                       raise_error=raise_error,
                                                       skip_batch_with_no_labels=skip_batch_with_no_labels)
 
         no_of_batches += _no_of_batches
+        for key, val in no_of_samples.items():
+            no_of_samples[key] = val + _no_of_samples[key]
 
-        for x_batch, y_batch in zip(event_x_batches, event_y_batches):
+        for x_batch, _y_batch in zip(event_x_batches, event_y_batches):
+            index_batch = _y_batch[:, -1]
+            y_batch = _y_batch[:, :-1]
             x_batches.append(x_batch)
             y_batches.append(y_batch)
+            index_batches = np.append(index_batches, index_batch)
 
     if verbosity > 0:
         for x_batch, y_batch in zip(x_batches, y_batches):
             print(x_batch.shape, y_batch.shape)
 
-    return x_batches, y_batches, no_of_batches
+    return x_batches, y_batches, no_of_batches, index_batches[1:], no_of_samples
 
 
 def nan_to_num(array, outs, replace_with=0.0):
     array = array.copy()
-    y = np.array(array[:, -outs:], dtype=np.float32)
+    y = np.array(array[:, -outs:], dtype=np.float64)  # np.float32 can not hold at least datetime column
     y = np.nan_to_num(y, nan=replace_with)
     array[:, -outs:] = y
     return array
@@ -703,13 +751,17 @@ def normalize_data(dataset):
     dataset_n = np.full(dataset.shape, np.nan)
     all_scalers = OrderedDict()
 
-    for dat in range(dataset.shape[1]):
+    # The last columns in dataset is supposed to be datetime columns which is not normalized as that is used
+    # only for indexing during final plotting.
+    for dat in range(dataset.shape[1]-1):
         value = dataset[:, dat]
         val_scaler = MinMaxScaler(feature_range=(0, 1))
         val_norm = val_scaler.fit_transform(value.reshape(-1, 1))
         dataset_n[:, dat] = val_norm.reshape(-1, )
         all_scalers[str(dat) + '_scaler'] = val_scaler
 
+    # putting the last columns in dataset as it is without normalizing.
+    dataset_n[:, -1] = dataset[:, -1]
     return dataset_n, all_scalers
 
 
@@ -810,7 +862,10 @@ def plot_scatter(true, pred, _name, searborn=True):
 
 def regplot_using_searborn(true, pred, _name):
     # https://seaborn.pydata.org/generated/seaborn.regplot.html
+    plt.close('all')
     sns.regplot(x=true, y=pred, color="g")
+    plt.xlabel('Observed Bacteria', fontsize=14)
+    plt.ylabel('Predicted Bacteria', fontsize=14)
     plt.savefig(_name, dpi=300, bbox_inches='tight')
     plt.close('all')
 
@@ -844,22 +899,30 @@ def validate_dictionary(dictionary, keys, name):
             raise KeyError('dictionary {} does not have key {}'.format(name, k))
 
 
-def plot_single_output(df, _name):
+def plot_single_output(df, _name, runtype):
+    """ if runtype is 'train', then Predictions are considered to be only from training data.
+    if runtype is 'test' then predictions are considered only to be from only test data.
+    if runtype is `all`, then the columns `Predictions` actually represents predictions from all data but on 4th plot
+    we will override it with predictions from training data."""
+    label = {'train': 'Predictions',
+             'test': 'Predictions',
+             'all': 'Validation Predictions'}
+    # TODO show datetime index on x-axis
+    df = df.copy()
+    df = df.replace(['0', 0], np.nan)
     fig, (ax1, ax2) = plt.subplots(2, sharex='all')
-    set_fig_dim(fig, 14, 6)
+    set_fig_dim(fig, 10, 6)
     ax1.set_title("Model Performance", fontsize=18)
 
-    process_axis(ax1, df['pcp_mm'], style='b-', c='g', ms=5, invert_yaxis=True, bottom_spine=False, show_xaxis=False)
+    process_axis(ax1, df['pcp_mm'].values, style='b-', c='g', ms=4, invert_yaxis=True, bottom_spine=False,
+                 show_xaxis=False, label='Precipitation',  y_label='mm')
 
-    process_axis(ax2, df['true'], style='b.', c='b', ms=5)
-    # process_axis(ax, df['Used for training'], style='b-', c='b', ms=2, label="Used for training", leg_fs=12, leg_ms=4)
-    # process_axis(ax, df['Excluded from training'], style='b*', c='b', ms=5)
-    # process_axis(ax, df['Excluded from training'], style='b-', c='b', ms=2, label='Used for testing', leg_fs=12,
-    #              leg_ms=4)
-    # process_axis(ax, df['Prediction'], style='r.', c='r', ms=6, y_label="MPN", yl_fs=14)
-    process_axis(ax2, df['Prediction'], style='r-', c='r', ms=2, label='Predicted', leg_fs=12, leg_ms=4, y_label="MPN",
-                 yl_fs=14, top_spine=False,
-                 x_label="No. of Observations", xl_fs=14)
+    process_axis(ax2, df['true'].values, style='b.', c='b', ms=5, label='True')
+    process_axis(ax2, df['Prediction'].values, style='k-', c='k', ms=2, label=label[runtype], leg_fs=12,
+                 leg_ms=4, y_label="MPN",  yl_fs=14, top_spine=False, x_label="No. of Observations", xl_fs=14)
+    if runtype == 'all':
+        process_axis(ax2, df['train'].values, style='r-', c='r', ms=2, label='Training Predictions', leg_fs=12,
+                     leg_ms=4, y_label="MPN",  yl_fs=14, top_spine=False, x_label="No. of Observations", xl_fs=14)
 
     plt.savefig(_name, dpi=300, bbox_inches='tight')
     plt.close(fig)
