@@ -52,7 +52,7 @@ nn_config['method'] = 'keras_lstm_layer'
 nn_config['dropout'] = dropout
 nn_config['batch_norm'] = False
 nn_config['lstm_activation'] = None if nn_config['batch_norm'] else act_f
-nn_config['n_epochs'] = 1500
+nn_config['n_epochs'] = 35
 
 nn_config['lookback'] = lookback
 nn_config['input_features'] = len(in_features)
@@ -81,7 +81,7 @@ saved_epochs, losses = model.train_nn()
 errors, neg_predictions = model.predict()
 
 # to load and run checkpoints comment above two lines and uncomment following code
-# path = d = "C:\\Users\\USER\\Documents\\dl_jiyi\\models\\20200505_1643"
+# path = d = "D:\\dl_jiyi\\models\\20200524_0347"
 # model = Model.from_config(path)
 # model.build_nn()
-# model.predict(from_config=True)
+# model.predict(mode='all')
