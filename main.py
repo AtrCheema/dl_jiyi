@@ -30,7 +30,7 @@ ARGS_KEYS = ['train_args', 'test_args', 'all_args']
 
 
 class ModelAttr(object):
-
+    """ Just to store attributes of Model class"""
     scalers = AttributeNotSetYet('build_nn')
 
     def __init__(self):
