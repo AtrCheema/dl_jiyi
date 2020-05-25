@@ -870,16 +870,35 @@ def regplot_using_searborn(true, pred, _name):
     plt.close('all')
 
 
-def plot_bact_points(true, pred, _name):
+def plot_bact_points(df, _name, run_type):
+
+    df = df.replace(['0', 0], np.nan)
+
     fig, ax = plt.subplots(1)
     set_fig_dim(fig, 14, 6)
     ax.set_title("Model Performance", fontsize=18)
 
-    process_axis(ax, true, style='b.', c='b', ms=5)
-    process_axis(ax, true, style='b-', c='b', ms=2, label="True", leg_fs=12, leg_ms=4)
-    process_axis(ax, pred, style='r*', c='r', ms=6, y_label="ARGs(copies/mL)", yl_fs=14)
-    process_axis(ax, pred, style='r-', c='r', ms=2, label='Predicted', leg_fs=12, leg_ms=4, y_label="ARGs(copies/mL)", yl_fs=14,
+    true = df['true'].dropna()
+    pred = df['Prediction'][true.index]
+
+    train = None
+    if run_type == 'all':
+        train = df['train'][true.index]
+
+    process_axis(ax, true.values, style='b.', c='b', ms=5)
+    process_axis(ax, true.values, style='b-', c='b', ms=2, label="True", leg_fs=12, leg_ms=4)
+    process_axis(ax, pred.values, style='r*', c='r', ms=6, y_label="ARGs(copies/mL)", yl_fs=14)
+    process_axis(ax, pred.values, style='r-', c='r', ms=2, label='Validation points', leg_fs=12, leg_ms=4,
+                 y_label="ARGs(copies/mL)", yl_fs=14,
                  x_label="No. of Observations", xl_fs=14)
+
+    if run_type == 'all':
+        process_axis(ax, train.values, style='k-', c='k', ms=2, label='Training points', leg_fs=12, leg_ms=4,
+                     y_label="ARGs(copies/mL)", yl_fs=14,
+                     x_label="No. of Observations", xl_fs=14)
+        process_axis(ax, train.values, style='*', c='k', ms=6, label='Training points', leg_fs=12, leg_ms=4,
+                     y_label="ARGs(copies/mL)", yl_fs=14,
+                     x_label="No. of Observations", xl_fs=14)
     plt.savefig(_name, dpi=300, bbox_inches='tight')
     plt.close(fig)
 
@@ -911,17 +930,17 @@ def plot_single_output(df, _name, runtype):
     df = df.copy()
     df = df.replace(['0', 0], np.nan)
     fig, (ax1, ax2) = plt.subplots(2, sharex='all')
-    set_fig_dim(fig, 10, 6)
+    set_fig_dim(fig, 14, 6)
     ax1.set_title("Model Performance", fontsize=18)
 
-    process_axis(ax1, df['pcp_mm'].values, style='b-', c='g', ms=4, invert_yaxis=True, bottom_spine=False,
+    process_axis(ax1, df['pcp_mm'].values, style='b-', c='g', ms=3, invert_yaxis=True, bottom_spine=False,
                  show_xaxis=False, label='Precipitation',  y_label='mm')
 
     process_axis(ax2, df['true'].values, style='b.', c='b', ms=5, label='True')
-    process_axis(ax2, df['Prediction'].values, style='k-', c='k', ms=2, label=label[runtype], leg_fs=12,
+    process_axis(ax2, df['Prediction'].values, style='r-', c='r', ms=2, label=label[runtype], leg_fs=12,
                  leg_ms=4, y_label="MPN",  yl_fs=14, top_spine=False, x_label="No. of Observations", xl_fs=14)
     if runtype == 'all':
-        process_axis(ax2, df['train'].values, style='r-', c='r', ms=2, label='Training Predictions', leg_fs=12,
+        process_axis(ax2, df['train'].values, style='k-', c='k', ms=2, label='Training Predictions', leg_fs=12,
                      leg_ms=4, y_label="MPN",  yl_fs=14, top_spine=False, x_label="No. of Observations", xl_fs=14)
 
     plt.savefig(_name, dpi=300, bbox_inches='tight')
