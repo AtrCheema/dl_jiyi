@@ -31,7 +31,7 @@ ARGS_KEYS = ['train_args', 'test_args', 'all_args']
 
 class ModelAttr(object):
     """ Just to store attributes of Model class"""
-    scalers = AttributeNotSetYet('build_nn')
+    scalers = None  # AttributeNotSetYet('build_nn')
 
     def __init__(self):
         pass
@@ -171,6 +171,9 @@ class Model(nn, ModelAttr):
         errors = {}
         neg_predictions = {}
         for m in mode:
+            if self.verbosity > 0:
+                stars = ["*" for _ in range(20)]
+                print(stars, "\nPrediction using {} data\n".format(m), stars)
             _errors, _neg_predictions = make_predictions(x_batches=self.batches[m + '_x'],  # like `train_x` or `val_x`
                                                          y_batches=self.batches[m + '_y'],
                                                          model=self,
@@ -195,7 +198,7 @@ class Model(nn, ModelAttr):
         config['test_sample_idx'] = 'test_idx'
         config['start_time'] = self.nn_config['start_time'] if 'start_time' in self.nn_config else " "
         config['end_time'] = self.nn_config['end_time'] if 'end_time' in self.nn_config else " "
-        config["saved_epochs"] = self.saved_epochs
+        # config["saved_epochs"] = self.saved_epochs
         config['intervals'] = self.intervals
         config['args'] = self.args
         config['train_time'] = self.nn_config['train_duration'] if 'train_duration' in self.nn_config else " "

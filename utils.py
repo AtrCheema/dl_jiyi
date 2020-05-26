@@ -593,7 +593,7 @@ def check_and_initiate_batch(generator_object, _batch_generator, verbose=1, rais
             total_bact_samples[out_feat] += non_zeros
 
             if verbose > 1:
-                print(non_zeros, mask_y_batch[a].reshape(-1, ), end=' ')
+                print(non_zeros, mask_y_batch[:, out_feat][a].reshape(-1, ), end=' ')
             elif verbose > 0:
                 print(non_zeros, end=' ')
             if non_zeros < 1:
