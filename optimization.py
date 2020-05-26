@@ -1,7 +1,7 @@
 
 from collections import OrderedDict
 import tensorflow as tf
-
+import random
 
 from main import Model
 
@@ -11,7 +11,7 @@ def reset_graph():
     tf.keras.backend.clear_session()
 
 
-def objective_func(BatchSize, lookback, lr, lstm_units, act_f='relu'):
+def objective_func(pot_tr_intervals, BatchSize=24, lookback=12, lr=1e-6, lstm_units=128, act_f='relu'):
 
     in_features = ['pcp_mm','tide_cm', 'wat_temp_c', 'sal_psu',
                'air_temp_c', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa', 'mslp_hpa', 'rel_hum']
@@ -29,7 +29,7 @@ def objective_func(BatchSize, lookback, lr, lstm_units, act_f='relu'):
     nn_config['dropout'] = dropout
     nn_config['batch_norm'] = False
     nn_config['lstm_activation'] = None if nn_config['batch_norm'] else act_f
-    nn_config['n_epochs'] = 15
+    nn_config['n_epochs'] = 15000
 
     nn_config['lookback'] = lookback
     nn_config['input_features'] = len(in_features)
@@ -57,37 +57,37 @@ def objective_func(BatchSize, lookback, lr, lstm_units, act_f='relu'):
                   'trim_last_batch': True
                   }
 
-    train_intervals = [
-        # [i for i in range(0, 147, BatchSize)],
-        # [i for i in range(149, 393, BatchSize)],
-        # [i for i in range(394, 638, BatchSize)],
-        # [i for i in range(639, 834, BatchSize)],
-        # [i for i in range(839, 1100, BatchSize)]
-        [i for i in range(0, 138, BatchSize)],
-        [i for i in range(204, 362, BatchSize)],
-        [i for i in range(357, 431, BatchSize)],
-        [i for i in range(567, 708, BatchSize)],
-        [i for i in range(705, 807, BatchSize)],
-        [i for i in range(871, 1055, BatchSize)],
-        [i for i in range(1045, 1115, BatchSize)],
-        [i for i in range(1239, 1446, BatchSize)]
+    total_intervals = {
+        0: [i for i in range(0, 156, BatchSize)],
+        1: [i for i in range(136, 407, BatchSize)],
+        2: [i for i in range(412, 546, BatchSize)],
+        3: [i for i in range(509, 580, BatchSize)],
+        4: [i for i in range(533, 660, BatchSize)],
+        5: [i for i in range(633, 730, BatchSize)],
+        6: [i for i in range(730, 831, BatchSize)],
+        7: [i for i in range(821, 971, BatchSize)],
+        8: [i for i in range(941, 1071, BatchSize)],
+        9: [i for i in range(1125, 1200, BatchSize)],
+        10: [i for i in range(1172, 1210, BatchSize)],
+        11: [i for i in range(1196, 1240, BatchSize)],
+        12: [i for i in range(1220, 1317, BatchSize)],
+        13: [i for i in range(1292, 1335, BatchSize)],
+        14: [i for i in range(1316, 1447, BatchSize)]
+    }
 
-    ]
 
-    test_intervals = [
-        # [i for i in range(980, 1398, BatchSize)]
-        [i for i in range(136, 208, BatchSize)],
-        [i for i in range(430, 568, BatchSize)],
-        [i for i in range(804, 885, BatchSize)],
-        [i for i in range(1119, 1243, BatchSize)]
+    train_intervals = []
+    test_intervals = []
 
-    ]
+    for key in total_intervals.keys():
+        if key in pot_tr_intervals:
+            train_intervals.append(total_intervals[key])
+            print('train: ', key)
+        else:
+            test_intervals.append(total_intervals[key])
+            print('test: ', key)
 
-    all_intervals = [
-        # [i for i in range(0, 1398, BatchSize)]
-        [i for i in range(0, 1446, BatchSize)]
-
-    ]
+    all_intervals = list(total_intervals.values())
 
     intervals = {'train_intervals': train_intervals,
                  'test_intervals': test_intervals,
