@@ -61,7 +61,7 @@ def make_predictions(x_batches,
                 for i, j in zip(_test_y_pred, _test_y_true):
                     print(i, j)
 
-            plot_bact_points(test_y_true_avail, test_y_pred_avail, out_path + "/bact_points")
+            # plot_bact_points(test_y_true_avail, test_y_pred_avail, out_path + "/bact_points")
 
             plot_scatter(test_y_true_avail, test_y_pred_avail, out_path + "/scatter")
 
@@ -77,6 +77,11 @@ def make_predictions(x_batches,
             # ndf['pred_avail'] = test_y_pred_avail
 
             ndf.index = get_index(model.batches[runtype + '_index'])
+
+            # removing duplicated values
+            # TODO why duplicated values exist
+            ndf = ndf[~ndf.index.duplicated(keep='first')]
+
             plots_on_last_axis = ['true', out]
             if runtype == 'all':
                 train_idx = get_index(model.batches['train' + '_index'])
@@ -90,6 +95,8 @@ def make_predictions(x_batches,
 
             ndf['Prediction'] = ndf[out]
             plot_single_output(ndf, out_path + '/' + str(out) + '_single', runtype)
+
+            plot_bact_points(ndf, out_path + "/bact_points", runtype)
 
             if save_results:
                 fpath = os.path.join(out_path + '_' + runtype + '_results.xlsx')
