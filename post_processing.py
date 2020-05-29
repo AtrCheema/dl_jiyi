@@ -85,8 +85,11 @@ def make_predictions(x_batches,
             plots_on_last_axis = ['true', out]
             if runtype == 'all':
                 train_idx = get_index(model.batches['train' + '_index'])
+                train_idx = train_idx[~train_idx.duplicated()]
                 # test_idx = get_index(model.batches['test' + '_index'])
-                ndf['train'] = ndf[out][train_idx]
+                out_df = ndf[out]
+                out_df = out_df[~out_df.index.duplicated()]
+                ndf['train'] = ndf[out][train_idx]  # out_df[train_idx]
                 # ndf['test'] = ndf[out][test_idx]
                 plots_on_last_axis.append('train')
 

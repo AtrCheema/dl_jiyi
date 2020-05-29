@@ -691,7 +691,92 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
         for x_batch, y_batch in zip(x_batches, y_batches):
             print(x_batch.shape, y_batch.shape)
 
-    return x_batches, y_batches, no_of_batches, index_batches[1:], no_of_samples
+    return x_batches, y_batches, no_of_batches, index_batches[1:].astype(np.int64), no_of_samples
+
+
+def generate_sample_based_batches(args, batch_size, data,
+                                  verbosity=1):
+
+    if args['out_features'] > 1:
+        raise NotImplementedError
+
+    args = deepcopy(args)
+
+    args['out_features'] = args['out_features'] + 2
+
+    predef_intervals = [i for i in range(args['start'], args['end'], batch_size)]
+
+    event_intvl = check_interval_validity(predef_intervals, data.shape[0])
+
+    event_generator = BatchGenerator(data, batch_size, args, verbose=verbosity)
+    _gen = event_generator.many_to_one(predef_interval=event_intvl)
+
+    def find_no_batches(total_samples, _generator):
+
+        _batch, _y_batch = next(_generator)
+        first_idx = _y_batch[0, 1].astype(np.int64)
+        batch = None
+
+        for batch in range(total_samples):
+            _batch, _y_batch = next(_generator)
+            idx_int = _y_batch[:, 1].astype(np.int64)
+            if first_idx in idx_int:
+                print('found at ', batch)
+                break
+
+        return batch+1
+
+    no_of_batches = find_no_batches(args['no_of_samples'], _gen)
+
+    batch_size = batch_size
+    lookback = args['lookback']
+    in_features = args['in_features']
+    out_features = args['out_features']
+
+    x_batches_list = []  # not predefining length of this list because it can vary if a batch contains no labels
+    y_batches_list = []
+    dt_batches_list = []
+
+    no_of_batches_recalc = 0
+
+    for i in range(no_of_batches):
+
+        mask_x_batch, mask_y_batch = next(_gen)
+
+        # for out_feat in range(out_features-2):
+
+        to_keep = mask_y_batch[:, -1]
+        dt_idx = mask_y_batch[:, -2]
+        to_keep_non_zero,  = np.where(to_keep > 0.0)
+
+        to_keep_idx, = np.where(to_keep > 0.0)
+
+        if len(to_keep_non_zero) > 0:
+
+            if sum(mask_y_batch[:, 0]) < 0.1:
+                raise ValueError
+
+            x_batches_list.append(mask_x_batch)
+            target_y = np.zeros(mask_y_batch[:, 0].shape)
+            target_y[to_keep_idx] = mask_y_batch[:, 0][to_keep_idx]
+
+            no_of_batches_recalc += 1
+
+            y_batches_list.append(target_y)
+            dt_batches_list.append(dt_idx)
+
+    x_batches = np.full((no_of_batches_recalc, batch_size, lookback, in_features), np.nan)
+    y_batches = np.full((no_of_batches_recalc, batch_size, out_features-2), np.nan)
+    dt_batches = np.full((no_of_batches_recalc, batch_size, 1), np.nan, dtype=np.int64)
+    index_batches = np.array(0.0)
+
+    for i in range(no_of_batches_recalc):
+
+        x_batches[i, :] = x_batches_list[i]
+        y_batches[i, :] = y_batches_list[i].reshape(-1, 1)
+        index_batches = np.append(index_batches, dt_batches_list[i])  # dt_batches_list[i].reshape(-1, 1)
+
+    return x_batches, y_batches, no_of_batches_recalc, index_batches[1:].astype(np.int64)
 
 
 def nan_to_num(array, outs, replace_with=0.0):
@@ -745,7 +830,7 @@ def check_min_loss(epoch_loss_array, batch_loss_array, _epoch, func1, func, _ps,
     return _ps, min_loss_epoch, _save_fg
 
 
-def normalize_data(dataset):
+def normalize_data(dataset, ignore_from_last=2):
     # normalizing data and making batches
     # container for normalized input data
     dataset_n = np.full(dataset.shape, np.nan)
@@ -753,7 +838,7 @@ def normalize_data(dataset):
 
     # The last columns in dataset is supposed to be datetime columns which is not normalized as that is used
     # only for indexing during final plotting.
-    for dat in range(dataset.shape[1]-1):
+    for dat in range(dataset.shape[1]-ignore_from_last):
         value = dataset[:, dat]
         val_scaler = MinMaxScaler(feature_range=(0, 1))
         val_norm = val_scaler.fit_transform(value.reshape(-1, 1))
@@ -761,7 +846,7 @@ def normalize_data(dataset):
         all_scalers[str(dat) + '_scaler'] = val_scaler
 
     # putting the last columns in dataset as it is without normalizing.
-    dataset_n[:, -1] = dataset[:, -1]
+    dataset_n[:, -ignore_from_last:] = dataset[:, -ignore_from_last:]
     return dataset_n, all_scalers
 
 

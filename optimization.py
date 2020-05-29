@@ -11,9 +11,9 @@ def reset_graph():
     tf.keras.backend.clear_session()
 
 
-def objective_func(pot_tr_intervals, BatchSize=24, lookback=12, lr=1e-6, lstm_units=128, act_f='relu'):
+def objective_func(pot_tr_intervals, BatchSize=24, lookback=8, lr=1e-7, lstm_units=128, act_f='relu'):
 
-    in_features = ['pcp_mm','tide_cm', 'wat_temp_c', 'sal_psu',
+    in_features = ['pcp_mm', 'pcp3_mm','tide_cm', 'wat_temp_c', 'sal_psu',
                'air_temp_c', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa', 'mslp_hpa', 'rel_hum']
 
     out_features = ['blaTEM_coppml']
@@ -21,7 +21,7 @@ def objective_func(pot_tr_intervals, BatchSize=24, lookback=12, lr=1e-6, lstm_un
     nn_config = OrderedDict()
     # lstm_units = 100
     # lr = 1e-5
-    dropout = 0.2
+    dropout = 0.4
     # act_f = 'relu'
     nn_config['lstm_units'] = int(lstm_units)
     nn_config['lr'] = lr
@@ -29,7 +29,7 @@ def objective_func(pot_tr_intervals, BatchSize=24, lookback=12, lr=1e-6, lstm_un
     nn_config['dropout'] = dropout
     nn_config['batch_norm'] = False
     nn_config['lstm_activation'] = None if nn_config['batch_norm'] else act_f
-    nn_config['n_epochs'] = 15000
+    nn_config['n_epochs'] = 25000
 
     nn_config['lookback'] = lookback
     nn_config['input_features'] = len(in_features)

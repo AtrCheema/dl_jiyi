@@ -1,7 +1,8 @@
 
 import pandas as pd
 import os
-
+import scipy.io as sio
+import numpy as np
 
 from utils import do_plot
 
@@ -67,6 +68,44 @@ class DATA(object):
     def evn(self):
         return [d for d in self.prosp_ins if d not in self.rains + self.misc_in]  # environmental data
 
+    def get_df_from_rf(self, mat_name):
+
+        opt_set = sio.loadmat(os.path.join(self.data_dir, mat_name))
+        train_set = opt_set['best_TD']
+        test_set = opt_set['best_VD']
+
+        cols = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c',
+                'pcp_mm',  'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa', 'mslp_hpa',
+                'rel_hum', 'blaTEM_coppml', 'index']
+
+        train_idx = train_set[:, -1].astype(np.int64)
+        train_df = pd.DataFrame(train_set, index=train_idx, columns=cols)
+        train_df['train_index'] = 1
+        _ = train_df.pop('index')
+
+        test_idx = test_set[:, -1].astype(np.int64)
+        test_df = pd.DataFrame(test_set, index=test_idx, columns=cols)
+        test_df['test_index'] = 1
+        _ = test_df.pop('index')
+
+        df = pd.concat([train_df, test_df])
+        df = df.sort_index()
+
+        df_all = self.get_df()
+
+        y = df_all['blaTEM_coppml']
+        avail = y.dropna()
+        df.index = avail.index
+
+        train_index = df['train_index']
+        test_index = df['test_index']
+        df_all['train_index'] = np.nan
+        df_all['test_index'] = np.nan
+        df_all['train_index'][train_index.index] = train_index
+        df_all['test_index'][test_index.index] = test_index
+
+        return df_all
+
     def get_df(self, wat_data_from_rf=True):
         fname = 'all_data_' + self.freq + '.xlsx'
         fpath = os.path.join(self.data_dir, fname)
@@ -75,6 +114,7 @@ class DATA(object):
             index_col = [c for c in df.columns if 'Date_Time' in c][0]
             df.index = df[index_col]
             df.pop(index_col)
+
             if self.verbosity > 0:
                 print('file with {} freq is available as {}'.format(self.freq, fpath))
         else:
@@ -320,6 +360,7 @@ class DATA(object):
                 hdf.to_excel('data/wat_data_rf_30min.xlsx')
 
             return hdf
+
 
 def assign_freq(df, index=None, file=None, force_freq=None,  verbosity=1, print_only=False):
     if not print_only:

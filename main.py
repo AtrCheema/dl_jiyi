@@ -9,6 +9,7 @@ from utils import save_config_file
 from utils import plot_loss
 from utils import copy_check_points
 from utils import AttributeNotSetYet
+from utils import generate_sample_based_batches
 from post_processing import make_predictions
 
 import os
@@ -86,56 +87,79 @@ class Model(nn, ModelAttr):
         dataset = nan_to_num(df.values, len(out_features)+1, replace_with=0.0)
 
         if self.data_config['normalize']:
-            dataset, self.scalers = normalize_data(dataset)
+            dataset, self.scalers = normalize_data(dataset, 1)
 
         return dataset  # , scalers
 
-    def get_batches(self, dataset):
+    def get_batches_new(self, mode):
 
-        train_x, train_y, train_no_of_batches, train_indexes,\
-            self.data_config['no_of_train_samples'] = generate_event_based_batches(dataset,
-                                                                                   self.nn_config['batch_size'],
-                                                                                   self.args['train_args'],
-                                                                                   self.intervals['train_intervals'],
-                                                                                   self.verbosity,
-                                                                                   skip_batch_with_no_labels=True)
+        in_features = self.data_config['in_features']
+        out_features = self.data_config['out_features']
 
-        test_x, test_y, test_no_of_batches, test_index,\
-            self.data_config['no_of_test_samples'] = generate_event_based_batches(dataset,
-                                                                                  self.nn_config['batch_size'],
-                                                                                  self.args['train_args'],
-                                                                                  self.intervals['test_intervals'],
-                                                                                  self.verbosity,
-                                                                                  skip_batch_with_no_labels=True)
+        data_obj = DATA(freq=self.data_config['freq'])
+        all_data = data_obj.get_df_from_rf('opt_set_testing.mat')  # INPUT
 
-        all_x, all_y, all_no_of_batches, all_indexes,\
-            self.data_config['no_of_all_samples'] = generate_event_based_batches(dataset,
-                                                                                 self.nn_config['batch_size'],
-                                                                                 self.args['train_args'],
-                                                                                 self.intervals['all_intervals'],
-                                                                                 self.verbosity-1,
-                                                                                 raise_error=False)
+        # copying required data
+        df = all_data[in_features].copy()
+        for out in out_features:
+            df[out] = all_data[out].copy()
+        if self.verbosity > 0:
+            print('shape of whole dataset', df.shape)
 
-        self.nn_config['train_no_of_batches'] = train_no_of_batches
-        self.nn_config['test_no_of_batches'] = test_no_of_batches
-        self.nn_config['all_no_of_batches'] = all_no_of_batches
+        # assuming that pandas will add the 'datetime' column as last column. This columns will only be used to keep
+        # track of indices of train and test data.
+        df['datetime'] = list(map(int, np.array(df.index.strftime('%Y%m%d%H%M'))))
 
-        self.batches['train_x'] = train_x
-        self.batches['train_y'] = train_y
-        self.batches['test_x'] = test_x
-        self.batches['test_y'] = test_y
-        self.batches['all_x'] = all_x
-        self.batches['all_y'] = all_y
-        self.batches['train_index'] = train_indexes.astype(np.int64)
-        self.batches['test_index'] = test_index.astype(np.int64)
-        self.batches['all_index'] = all_indexes.astype(np.int64)
+        index = all_data[mode + '_index']
+        ttk = index.dropna()
+
+        self.args[mode + '_args']['no_of_samples'] = len(ttk)
+
+        ttk_idx = list(map(int, np.array(ttk.index.strftime('%Y%m%d%H%M'))))  # list
+
+        df['to_keep'] = 0
+        df['to_keep'][ttk.index] = ttk_idx
+
+        dataset = nan_to_num(df.values, len(out_features)+1, replace_with=0.0)
+
+        if self.data_config['normalize']:
+            dataset, self.scalers = normalize_data(dataset, 2)
+
+        self.batches[mode + '_x'],\
+            self.batches[mode + '_y'], \
+            self.nn_config[mode + '_no_of_batches'], \
+            self.batches[mode + '_index'] = generate_sample_based_batches(self.args[mode + '_args'],
+                                                                          self.nn_config['batch_size'],
+                                                                          dataset)
+
+    def get_batches(self, dataset, mode):
+
+        if self.data_config['batch_making_mode'] == 'sample_based':
+            st = self.args['all_args']['start']
+            en = self.args['all_args']['end']
+            self.intervals = {'all_intervals': [[i for i in range(st, en, self.nn_config['batch_size'])]]}
+
+        self.batches[mode + '_x'],\
+            self.batches[mode + '_y'],\
+            self.nn_config[mode + '_no_of_batches'],\
+            self.batches[mode + '_index'],\
+            self.data_config['no_of_' + mode + '_samples'] = generate_event_based_batches(
+                dataset,
+                self.nn_config['batch_size'],
+                self.args[mode + '_args'],
+                self.intervals[mode + '_intervals'],
+                self.verbosity,
+                skip_batch_with_no_labels=True)
+
         return
 
     def build_nn(self):
 
         dataset = self.pre_process_data()
-
-        self.get_batches(dataset)
+        #
+        self.get_batches(dataset, mode='all')
+        for mode in ['train', 'test']:
+            self.get_batches_new(mode)
 
         # build neural network
         self.build()
@@ -172,7 +196,7 @@ class Model(nn, ModelAttr):
         neg_predictions = {}
         for m in mode:
             if self.verbosity > 0:
-                stars = ["*" for _ in range(20)]
+                stars = ["************************************************"]
                 print(stars, "\nPrediction using {} data\n".format(m), stars)
             _errors, _neg_predictions = make_predictions(x_batches=self.batches[m + '_x'],  # like `train_x` or `val_x`
                                                          y_batches=self.batches[m + '_y'],
@@ -247,7 +271,8 @@ class Model(nn, ModelAttr):
 
         validate_dictionary(self.nn_config, NN_CONF_KEYS, 'nn_config')
 
-        validate_dictionary(self.intervals, INTERVALS_KEYS, 'intervals')
+        if not self.data_config['batch_making_mode'] == 'sample_based':
+            validate_dictionary(self.intervals, INTERVALS_KEYS, 'intervals')
 
         validate_dictionary(self.args, ARGS_KEYS, 'args')
 
