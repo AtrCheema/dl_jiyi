@@ -75,7 +75,7 @@ class DATA(object):
         test_set = opt_set['best_VD']
 
         cols = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c',
-                'pcp_mm',  'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa', 'mslp_hpa',
+                'pcp_mm', 'pcp3_mm',  'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa',
                 'rel_hum', 'blaTEM_coppml', 'index']
 
         train_idx = train_set[:, -1].astype(np.int64)
