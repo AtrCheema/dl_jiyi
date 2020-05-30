@@ -219,9 +219,6 @@ class NeuralNetwork(NNAttr):
                     y_pred = y_pred.reshape(-1, 1)
                     y_pred = y_pred[mask_y_batch]
 
-                    # y_of_interest = val_y_scaler.inverse_transform(y_of_interest.reshape(-1,output_features))
-                    # y_pred = val_y_scaler.inverse_transform(y_pred.reshape(-1, output_features))
-
                     er = FindErrors(y_of_interest.reshape(-1,), y_pred.reshape(-1,))
                     for error in val_batch_losses.keys():
                         er_val = float(getattr(er, str(error))())
@@ -288,7 +285,8 @@ class NeuralNetwork(NNAttr):
             en = self.nn_config['batch_size']
             for i in range(test_iterations):
                 test_x_batch, mask_y_batch = x_batches[i], y_batches[i]
-                # y_of_interest = mask_y_batch[np.where(mask_y_batch>0.0)].reshape(-1,1)
+
+                y_of_interest_m = np.where(mask_y_batch > 0)
 
                 y_pred = sess.run(self.full_outputs,
                                   feed_dict={self.x_ph: test_x_batch, self.mask_ph: mask_y_batch.reshape(-1, 1)})
@@ -298,8 +296,14 @@ class NeuralNetwork(NNAttr):
                     y_pred = y_scaler.inverse_transform(y_pred.reshape(-1, n_outs))
                     mask_y_batch = y_scaler.inverse_transform(mask_y_batch.reshape(-1, n_outs))
 
+                    # TODO why we need to creat `y` while it works for "event_based_batches" without creating `y`
+                    # `y` is created because when we denormalize `mask_y_batch`, the 0s are also denormalized which we
+                    # don't want. We want `0s` as it is.
+                    y = np.full(mask_y_batch.shape, np.nan)
+                    y[y_of_interest_m[0]] = mask_y_batch[y_of_interest_m[0]]
+
                 test_y_pred[st:en, :] = y_pred.reshape(-1, n_outs)
-                test_y_true[st:en, :] = mask_y_batch.reshape(-1, n_outs)
+                test_y_true[st:en, :] = y  # mask_y_batch.reshape(-1, n_outs)
 
                 for dat in range(self.nn_config['input_features']):
                     value = test_x_batch[:, -1, dat].reshape(-1, 1)

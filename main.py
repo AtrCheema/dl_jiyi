@@ -97,7 +97,7 @@ class Model(nn, ModelAttr):
         out_features = self.data_config['out_features']
 
         data_obj = DATA(freq=self.data_config['freq'])
-        all_data = data_obj.get_df_from_rf('opt_set_testing.mat')  # INPUT
+        all_data = data_obj.get_df_from_rf('opt_set.mat')  # INPUT
 
         # copying required data
         df = all_data[in_features].copy()
@@ -128,16 +128,22 @@ class Model(nn, ModelAttr):
         self.batches[mode + '_x'],\
             self.batches[mode + '_y'], \
             self.nn_config[mode + '_no_of_batches'], \
-            self.batches[mode + '_index'] = generate_sample_based_batches(self.args[mode + '_args'],
-                                                                          self.nn_config['batch_size'],
-                                                                          dataset)
+            self.batches[mode + '_index'],\
+            self.batches[mode + '_tk_index'] = generate_sample_based_batches(self.args[mode + '_args'],
+                                                                             self.nn_config['batch_size'],
+                                                                             dataset)
+        return
 
     def get_batches(self, dataset, mode):
 
+        skip_batch_with_no_labels = True
+        raise_errors = True
         if self.data_config['batch_making_mode'] == 'sample_based':
             st = self.args['all_args']['start']
             en = self.args['all_args']['end']
             self.intervals = {'all_intervals': [[i for i in range(st, en, self.nn_config['batch_size'])]]}
+            raise_errors = False
+            skip_batch_with_no_labels = False
 
         self.batches[mode + '_x'],\
             self.batches[mode + '_y'],\
@@ -149,17 +155,29 @@ class Model(nn, ModelAttr):
                 self.args[mode + '_args'],
                 self.intervals[mode + '_intervals'],
                 self.verbosity,
-                skip_batch_with_no_labels=True)
+                raise_error=raise_errors,
+                skip_batch_with_no_labels=skip_batch_with_no_labels)
 
         return
 
     def build_nn(self):
 
         dataset = self.pre_process_data()
-        #
+
+        if "batch_making_mode" in self.data_config:
+            if self.data_config["batch_making_mode"] == "sample_based":
+
+                for mode in ['train', 'test']:
+                    self.get_batches_new(mode)
+
+            else:
+                for mode in ['train', 'test']:
+                    self.get_batches(dataset=dataset, mode=mode)
+        else:
+            for mode in ['train', 'test']:
+                self.get_batches(dataset=dataset, mode=mode)
+
         self.get_batches(dataset, mode='all')
-        for mode in ['train', 'test']:
-            self.get_batches_new(mode)
 
         # build neural network
         self.build()
@@ -196,7 +214,7 @@ class Model(nn, ModelAttr):
         neg_predictions = {}
         for m in mode:
             if self.verbosity > 0:
-                stars = ["************************************************"]
+                stars = "************************************************"
                 print(stars, "\nPrediction using {} data\n".format(m), stars)
             _errors, _neg_predictions = make_predictions(x_batches=self.batches[m + '_x'],  # like `train_x` or `val_x`
                                                          y_batches=self.batches[m + '_y'],
@@ -271,8 +289,11 @@ class Model(nn, ModelAttr):
 
         validate_dictionary(self.nn_config, NN_CONF_KEYS, 'nn_config')
 
-        if not self.data_config['batch_making_mode'] == 'sample_based':
+        if "batch_making_mode" in self.data_config:
+            pass
+        else:
             validate_dictionary(self.intervals, INTERVALS_KEYS, 'intervals')
+            self.data_config['batch_making_mode'] = 'event_based'
 
         validate_dictionary(self.args, ARGS_KEYS, 'args')
 

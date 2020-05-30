@@ -61,8 +61,6 @@ def make_predictions(x_batches,
                 for i, j in zip(_test_y_pred, _test_y_true):
                     print(i, j)
 
-            # plot_bact_points(test_y_true_avail, test_y_pred_avail, out_path + "/bact_points")
-
             plot_scatter(test_y_true_avail, test_y_pred_avail, out_path + "/scatter")
 
             ndf = pd.DataFrame()
@@ -84,8 +82,15 @@ def make_predictions(x_batches,
 
             plots_on_last_axis = ['true', out]
             if runtype == 'all':
-                train_idx = get_index(model.batches['train' + '_index'])
-                train_idx = train_idx[~train_idx.duplicated()]
+
+                if model.data_config['batch_making_mode'] == 'event_based':
+                    train_idx = get_index(model.batches['train' + '_index'])
+                    train_idx = train_idx[~train_idx.duplicated()]
+                else:
+                    train_tk = model.batches['train_tk_index']
+                    train_tk_nz = train_tk[np.where(train_tk > 0.0)]
+                    train_idx = get_index(train_tk_nz)
+
                 # test_idx = get_index(model.batches['test' + '_index'])
                 out_df = ndf[out]
                 out_df = out_df[~out_df.index.duplicated()]

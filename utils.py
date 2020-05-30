@@ -267,7 +267,7 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
                 for col in single_ax_plots:
                     val = col
                     ms = 4
-                    style = '-'
+                    style = '.'
                     if val in ['true', 'Excluded from training']:
                         ms = 10
                         style = '*'
@@ -280,7 +280,7 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
                 val = cols[idx]
                 _data = data[cols[idx]][st:en].values
                 process_axis(ax, _data, style='*', ms=10, c=colors[val], log=obs_logy, verbose=True)
-                process_axis(ax, _data, style='-', ms=9,  label=val, leg_fs=14, verbose=True, log=obs_logy)
+                process_axis(ax, _data, style='.', ms=9,  label=val, leg_fs=14, verbose=True, log=obs_logy)
 
         elif idx == 0:  # first plot
             val = cols[idx]
@@ -516,7 +516,7 @@ class BatchGenerator(BatchGeneratorAttr):
         gen_i = 1
         while 1:
 
-            for b in range(no_of_batches):
+            for b in range(no_of_batches+1):
                 st = interval[b]
                 en = interval[b + 1]
                 x_batch = x_wins[st:en, :, :]
@@ -736,6 +736,7 @@ def generate_sample_based_batches(args, batch_size, data,
     x_batches_list = []  # not predefining length of this list because it can vary if a batch contains no labels
     y_batches_list = []
     dt_batches_list = []
+    tk_batches_list = []
 
     no_of_batches_recalc = 0
 
@@ -760,14 +761,21 @@ def generate_sample_based_batches(args, batch_size, data,
             target_y = np.zeros(mask_y_batch[:, 0].shape)
             target_y[to_keep_idx] = mask_y_batch[:, 0][to_keep_idx]
 
-            no_of_batches_recalc += 1
+            if np.sum(target_y) > 0.0:
+                no_of_batches_recalc += 1
 
-            y_batches_list.append(target_y)
-            dt_batches_list.append(dt_idx)
+                y_batches_list.append(target_y)
+                dt_batches_list.append(dt_idx)
+                tk_batches_list.append(to_keep)
+                print("batch {} has {} samples at {}".format(i, len(to_keep_idx), to_keep_idx))
+            else:
+                print("WARNING: target_y was all zeros so ignored for batch", i)
+        else:
+            print("ignoring batch", i)
 
     x_batches = np.full((no_of_batches_recalc, batch_size, lookback, in_features), np.nan)
     y_batches = np.full((no_of_batches_recalc, batch_size, out_features-2), np.nan)
-    dt_batches = np.full((no_of_batches_recalc, batch_size, 1), np.nan, dtype=np.int64)
+    tk_batches = np.array(0.0)
     index_batches = np.array(0.0)
 
     for i in range(no_of_batches_recalc):
@@ -775,8 +783,10 @@ def generate_sample_based_batches(args, batch_size, data,
         x_batches[i, :] = x_batches_list[i]
         y_batches[i, :] = y_batches_list[i].reshape(-1, 1)
         index_batches = np.append(index_batches, dt_batches_list[i])  # dt_batches_list[i].reshape(-1, 1)
+        tk_batches = np.append(tk_batches, tk_batches_list[i])
 
-    return x_batches, y_batches, no_of_batches_recalc, index_batches[1:].astype(np.int64)
+    return x_batches, y_batches, no_of_batches_recalc, index_batches[1:].astype(np.int64),\
+        tk_batches[1:].astype(np.int64)
 
 
 def nan_to_num(array, outs, replace_with=0.0):
@@ -972,7 +982,7 @@ def plot_bact_points(df, _name, run_type):
 
     process_axis(ax, true.values, style='b.', c='b', ms=5)
     process_axis(ax, true.values, style='b-', c='b', ms=2, label="True", leg_fs=12, leg_ms=4)
-    process_axis(ax, pred.values, style='r*', c='r', ms=6, y_label="ARGs(copies/mL)", yl_fs=14)
+    process_axis(ax, pred.values, style='r*', c='r', ms=4, y_label="ARGs(copies/mL)", yl_fs=14)
     process_axis(ax, pred.values, style='r-', c='r', ms=2, label='Validation points', leg_fs=12, leg_ms=4,
                  y_label="ARGs(copies/mL)", yl_fs=14,
                  x_label="No. of Observations", xl_fs=14)
@@ -981,7 +991,7 @@ def plot_bact_points(df, _name, run_type):
         process_axis(ax, train.values, style='k-', c='k', ms=2, label='Training points', leg_fs=12, leg_ms=4,
                      y_label="ARGs(copies/mL)", yl_fs=14,
                      x_label="No. of Observations", xl_fs=14)
-        process_axis(ax, train.values, style='*', c='k', ms=6, label='Training points', leg_fs=12, leg_ms=4,
+        process_axis(ax, train.values, style='*', c='k', ms=4, label='Training points', leg_fs=12, leg_ms=4,
                      y_label="ARGs(copies/mL)", yl_fs=14,
                      x_label="No. of Observations", xl_fs=14)
     plt.savefig(_name, dpi=300, bbox_inches='tight')
@@ -1025,8 +1035,10 @@ def plot_single_output(df, _name, runtype):
     process_axis(ax2, df['Prediction'].values, style='r-', c='r', ms=2, label=label[runtype], leg_fs=12,
                  leg_ms=4, y_label="MPN",  yl_fs=14, top_spine=False, x_label="No. of Observations", xl_fs=14)
     if runtype == 'all':
-        process_axis(ax2, df['train'].values, style='k-', c='k', ms=2, label='Training Predictions', leg_fs=12,
+        process_axis(ax2, df['train'].values, style='k.', c='k', ms=3, label='Training Predictions', leg_fs=12,
                      leg_ms=4, y_label="MPN",  yl_fs=14, top_spine=False, x_label="No. of Observations", xl_fs=14)
 
     plt.savefig(_name, dpi=300, bbox_inches='tight')
     plt.close(fig)
+
+    return

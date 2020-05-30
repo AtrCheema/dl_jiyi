@@ -4,8 +4,8 @@ import random
 import numpy as np
 from main import Model
 
-in_features = ['pcp_mm','tide_cm', 'wat_temp_c', 'sal_psu',
-               'air_temp_c', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa', 'mslp_hpa', 'rel_hum']
+in_features = ['pcp_mm', 'pcp3_mm', 'tide_cm', 'wat_temp_c', 'sal_psu',
+               'air_temp_c', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa',  'rel_hum']
 out_features = ['blaTEM_coppml']
 
 data_config = OrderedDict()
@@ -100,8 +100,8 @@ model.build_nn()
 saved_epochs, losses = model.train_nn()
 errors, neg_predictions = model.predict()
 
-# to load and run checkpoints comment above two lines and uncomment following code
-# path = d = "H:\\JC\\47_20200521_1957"
+# # to load and run checkpoints comment above two lines and uncomment following code
+# path = "D:\\dl_jiyi\\models\\20200530_1655"
 # model = Model.from_config(path)
 # model.build_nn()
-# model.predict()
+# model.predict(mode='all')
