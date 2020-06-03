@@ -132,6 +132,10 @@ class NeuralNetwork(NNAttr):
 
         # self.loss = tf.reduce_mean(tf.square(outputs - self.obs_y_ph))
         optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.nn_config['lr'])
+
+        if self.nn_config['clip_norm'] is not None:
+            optimizer = tf.contrib.estimator.clip_gradients_by_norm(optimizer, clip_norm=self.nn_config['clip_norm'])
+
         self.training_op = optimizer.minimize(self.loss)
         self.saver = tf.compat.v1.train.Saver(max_to_keep=self.nn_config['n_epochs'])
 
@@ -273,48 +277,46 @@ class NeuralNetwork(NNAttr):
             self.saver.restore(sess, os.path.join(self.cp_dir, check_point))
 
             # evaluating model on training data
-            test_iterations = len(x_batches)
-            print(test_iterations, 'iter')
+            iterations = len(x_batches)
+            print(iterations, 'iter')
 
             # data_set.shape[1] + 1
-            x_data = np.full((test_iterations * self.nn_config['batch_size'], self.nn_config['input_features']), np.nan)
+            x_data = np.full((iterations * self.nn_config['batch_size'], self.nn_config['input_features']), np.nan)
 
-            test_y_pred = np.full((test_iterations * self.nn_config['batch_size'], n_outs), np.nan)
-            test_y_true = np.full((test_iterations * self.nn_config['batch_size'], n_outs), np.nan)
+            _y_pred = np.full((iterations * self.nn_config['batch_size'], n_outs), np.nan)
+            _y_true = np.full((iterations * self.nn_config['batch_size'], n_outs), np.nan)
             st = 0
             en = self.nn_config['batch_size']
-            for i in range(test_iterations):
-                test_x_batch, mask_y_batch = x_batches[i], y_batches[i]
-
-                y_of_interest_m = np.where(mask_y_batch > 0)
+            for i in range(iterations):
+                test_x_batch, y_batch = x_batches[i], y_batches[i]
 
                 y_pred = sess.run(self.full_outputs,
-                                  feed_dict={self.x_ph: test_x_batch, self.mask_ph: mask_y_batch.reshape(-1, 1)})
+                                  feed_dict={self.x_ph: test_x_batch, self.mask_ph: y_batch.reshape(-1, 1)})
 
                 if self.data_config['normalize']:
-                    y_scaler = scalers[str(list(scalers.keys())[-1])]
+                    y_scaler = scalers[self.data_config['out_features'][0] + '_scaler']
                     y_pred = y_scaler.inverse_transform(y_pred.reshape(-1, n_outs))
-                    mask_y_batch = y_scaler.inverse_transform(mask_y_batch.reshape(-1, n_outs))
+                    y_batch = y_scaler.inverse_transform(y_batch.reshape(-1, n_outs))
 
                     # TODO why we need to creat `y` while it works for "event_based_batches" without creating `y`
-                    # `y` is created because when we denormalize `mask_y_batch`, the 0s are also denormalized which we
+                    # `y` is created because when we denormalize `y_batch`, the 0s are also denormalized which we
                     # don't want. We want `0s` as it is.
-                    y = np.full(mask_y_batch.shape, np.nan)
-                    y[y_of_interest_m[0]] = mask_y_batch[y_of_interest_m[0]]
+                    # y = np.full(y_batch.shape, np.nan)
+                    # y[y_of_interest_m[0]] = y_batch[y_of_interest_m[0]]
 
-                test_y_pred[st:en, :] = y_pred.reshape(-1, n_outs)
-                test_y_true[st:en, :] = y  # mask_y_batch.reshape(-1, n_outs)
+                _y_pred[st:en, :] = y_pred.reshape(-1, n_outs)
+                _y_true[st:en, :] = y_batch.reshape(-1, n_outs)
 
-                for dat in range(self.nn_config['input_features']):
-                    value = test_x_batch[:, -1, dat].reshape(-1, 1)
+                for idx, dat in enumerate(self.data_config['in_features']):  # range(self.nn_config['input_features']):
+                    value = test_x_batch[:, -1, idx].reshape(-1, 1)
 
                     if self.data_config['normalize']:
-                        val_scaler = scalers[str(dat) + '_scaler']
+                        val_scaler = scalers[dat + '_scaler']
                         value = val_scaler.inverse_transform(value.reshape(-1, 1))
 
-                    x_data[st:en, dat] = value.reshape(-1, )
+                    x_data[st:en, idx] = value.reshape(-1, )
 
                 st += self.nn_config['batch_size']
                 en += self.nn_config['batch_size']
 
-        return x_data, test_y_pred, test_y_true
+        return x_data, _y_pred, _y_true

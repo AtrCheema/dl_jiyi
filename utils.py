@@ -375,7 +375,29 @@ class BatchGenerator(BatchGeneratorAttr):
     
     def __len__(self):
         return self.args['min_ind'] - self.args['max_ind']
-    
+
+    @classmethod
+    def from_data(cls, data, bs, _args, verbosity=0):
+        return cls(data, bs, _args, verbose=verbosity)
+
+    def find_no_of_batches(self, intervals, data, _batch_size, _args, verbosity=0):
+
+        _gen_class = self.from_data(data, _batch_size, _args, verbosity=verbosity)
+        _gen = _gen_class.many_to_one(intervals)
+
+        all_intervals = [i for i in range(_args['start'], _args['end'], _batch_size)]
+
+        _, _y_batch = next(_gen)
+        first_idx = _y_batch[0, 2].astype(np.int64)
+
+        for batch in range(len(all_intervals)+5):
+            _, _y_batch = next(_gen)
+            idx_int = _y_batch[:, 2].astype(np.int64).tolist()
+            if first_idx in idx_int:
+                break
+
+        return _gen_class.no_of_batches
+
     def many_to_one(self, predef_interval=None):
 
         many_to_one_args = {'lookback': 'required',
@@ -726,7 +748,7 @@ def generate_sample_based_batches(args, batch_size, data,
 
         return batch+1
 
-    no_of_batches = find_no_batches(args['no_of_samples'], _gen)
+    no_of_batches = find_no_batches(args['end'], _gen)
 
     batch_size = batch_size
     lookback = args['lookback']
@@ -767,7 +789,8 @@ def generate_sample_based_batches(args, batch_size, data,
                 y_batches_list.append(target_y)
                 dt_batches_list.append(dt_idx)
                 tk_batches_list.append(to_keep)
-                print("batch {} has {} samples at {}".format(i, len(to_keep_idx), to_keep_idx))
+                print("batch {} has {} samples at index {}, total batches {}".format(i, len(to_keep_idx),
+                                                                                     to_keep_idx, no_of_batches_recalc))
             else:
                 print("WARNING: target_y was all zeros so ignored for batch", i)
         else:
@@ -840,7 +863,7 @@ def check_min_loss(epoch_loss_array, batch_loss_array, _epoch, func1, func, _ps,
     return _ps, min_loss_epoch, _save_fg
 
 
-def normalize_data(dataset, ignore_from_last=2):
+def normalize_data(dataset, names, ignore_from_last=2, prefix=None):
     # normalizing data and making batches
     # container for normalized input data
     dataset_n = np.full(dataset.shape, np.nan)
@@ -853,7 +876,8 @@ def normalize_data(dataset, ignore_from_last=2):
         val_scaler = MinMaxScaler(feature_range=(0, 1))
         val_norm = val_scaler.fit_transform(value.reshape(-1, 1))
         dataset_n[:, dat] = val_norm.reshape(-1, )
-        all_scalers[str(dat) + '_scaler'] = val_scaler
+        pre = names[dat] + '_' + prefix if prefix is not None else names[dat]
+        all_scalers[pre + '_scaler'] = val_scaler
 
     # putting the last columns in dataset as it is without normalizing.
     dataset_n[:, -ignore_from_last:] = dataset[:, -ignore_from_last:]

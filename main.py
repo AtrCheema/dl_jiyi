@@ -32,7 +32,7 @@ ARGS_KEYS = ['train_args', 'test_args', 'all_args']
 
 class ModelAttr(object):
     """ Just to store attributes of Model class"""
-    scalers = None  # AttributeNotSetYet('build_nn')
+    scalers = {key: None for key in ['train', 'test', 'all']}  # AttributeNotSetYet('build_nn')
 
     def __init__(self):
         pass
@@ -87,12 +87,14 @@ class Model(nn, ModelAttr):
         dataset = nan_to_num(df.values, len(out_features)+1, replace_with=0.0)
 
         if self.data_config['normalize']:
-            dataset, self.scalers = normalize_data(dataset, 1)
+            dataset, self.scalers['all'] = normalize_data(dataset, df.columns, 1)
 
         return dataset  # , scalers
 
     def get_batches_new(self, mode):
 
+        print('\n', '*' * 14)
+        print("creating data for {} mode".format(mode))
         in_features = self.data_config['in_features']
         out_features = self.data_config['out_features']
 
@@ -120,10 +122,10 @@ class Model(nn, ModelAttr):
         df['to_keep'] = 0
         df['to_keep'][ttk.index] = ttk_idx
 
-        dataset = nan_to_num(df.values, len(out_features)+1, replace_with=0.0)
+        dataset = nan_to_num(df.values, len(out_features)+2, replace_with=0.0)
 
         if self.data_config['normalize']:
-            dataset, self.scalers = normalize_data(dataset, 2)
+            dataset, self.scalers[mode] = normalize_data(dataset, df.columns, 2)
 
         self.batches[mode + '_x'],\
             self.batches[mode + '_y'], \
@@ -132,6 +134,7 @@ class Model(nn, ModelAttr):
             self.batches[mode + '_tk_index'] = generate_sample_based_batches(self.args[mode + '_args'],
                                                                              self.nn_config['batch_size'],
                                                                              dataset)
+        print('*' * 14, '\n')
         return
 
     def get_batches(self, dataset, mode):
@@ -199,16 +202,25 @@ class Model(nn, ModelAttr):
 
         return self.saved_epochs, self.losses
 
-    def predict(self, mode=None):
+    def predict(self, mode=None, epochs_to_eval=None):
         """
         :param mode: list or str, if list then all members must be str default is ['train', 'test', 'all']
+        :param epochs_to_eval: int or list of integers
         :return: errors, dictionary of errors from each mode
                  neg_predictions, dictionary of negative prediction from each mode
         """
 
         mode = _get_mode(mode)
 
-        epochs_to_evaluate = self.data_config['saved_unique_cp']
+        if epochs_to_eval is None:
+            epochs_to_evaluate = self.data_config['saved_unique_cp']
+        else:
+            if isinstance(epochs_to_eval, int):
+                epochs_to_evaluate = [epochs_to_eval]
+            elif isinstance(epochs_to_eval, list):
+                epochs_to_evaluate = epochs_to_eval
+            else:
+                raise TypeError
 
         errors = {}
         neg_predictions = {}
@@ -313,6 +325,22 @@ class Model(nn, ModelAttr):
                 fname = os.path.join(fpath, 'checkpoints-' + str(epoch) + f)
                 if os.path.exists(fname):
                     os.remove(fname)
+
+    def print_samples(self, mode='train', data_type='y'):
+
+        batch_name = mode + '_' + data_type
+        total_samples = 0
+
+        for i in range(self.batches[batch_name].shape[0]):
+            batch = self.batches[batch_name][i, :]
+            vals = batch[:, 0]
+            nzs = vals[np.where(vals > 0.0)]
+            print('Batch: ', i, nzs)
+            total_samples += len(nzs)
+
+        print('Total samples are: {}'.format(total_samples))
+
+        return
 
 
 def _get_mode(mode):

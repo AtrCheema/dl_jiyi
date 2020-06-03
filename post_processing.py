@@ -26,42 +26,42 @@ def make_predictions(x_batches,
 
         check_point = "checkpoints-" + str(ep)
 
-        x_data, test_y_pred, test_y_true = model.run_check_point(check_point=check_point,
+        x_data, _y_pred, _y_true = model.run_check_point(check_point=check_point,
                                                                  x_batches=x_batches,
                                                                  y_batches=y_batches,
-                                                                 scalers=model.scalers)
+                                                                 scalers=model.scalers[runtype])
 
         # create a separate folder for each target and save its relevent data in that folder
         for idx, out in enumerate(model.data_config['out_features']):
             out_path = sub_path + '/' + out + '_' + runtype
             maybe_create_path(path=out_path)
 
-            _test_y_pred = test_y_pred[:, idx]
-            _test_y_true = test_y_true[:, idx]
+            y_pred = _y_pred[:, idx]
+            y_true = _y_true[:, idx]
 
-            negative_predictions = np.sum(np.array(_test_y_pred) < 0, axis=0)
+            negative_predictions = np.sum(np.array(y_pred) < 0, axis=0)
             if negative_predictions > 0:
                 print("Warning, {} Negative bacteria predictions found".format(negative_predictions))
             neg_predictions[str(ep)+'_'+out] = int(negative_predictions)
 
             if negative_predictions > 0:
-                _test_y_true = _test_y_true.copy()
+                y_true = y_true.copy()
             else:
-                _test_y_true = np.where(_test_y_true > 0.0, _test_y_true, np.nan)
+                y_true = np.where(y_true > 0.0, y_true, np.nan)
 
-            test_y_true_avail, test_y_pred_avail = get_pred_where_obs_available(_test_y_true, _test_y_pred)
+            y_true_avail, y_pred_avail = get_pred_where_obs_available(y_true, y_pred)
 
-            test_errors = get_errors(test_y_true_avail, test_y_pred_avail, model.data_config['monitor'])
+            errors = get_errors(y_true_avail, y_pred_avail, model.data_config['monitor'])
 
-            all_errors[str(ep)+'_'+out] = test_errors
+            all_errors[str(ep)+'_'+out] = errors
 
-            print('shapes of predicted arrays: ', _test_y_pred.shape, _test_y_true.shape, x_data.shape)
+            print('shapes of predicted arrays: ', y_pred.shape, y_true.shape, x_data.shape)
 
-            if model.verbosity > 1:
-                for i, j in zip(_test_y_pred, _test_y_true):
+            if model.verbosity > 2:
+                for i, j in zip(y_pred, y_true):
                     print(i, j)
 
-            plot_scatter(test_y_true_avail, test_y_pred_avail, out_path + "/scatter")
+            plot_scatter(y_true_avail, y_pred_avail, out_path + "/scatter")
 
             ndf = pd.DataFrame()
 
@@ -69,8 +69,8 @@ def make_predictions(x_batches,
             for i, inp in enumerate(model.data_config['in_features']):
                 ndf[inp] = x_data[:, i]
 
-            ndf['true'] = _test_y_true
-            ndf[out] = _test_y_pred
+            ndf['true'] = y_true
+            ndf[out] = y_pred
             # ndf['true_avail'] = test_y_true_avail
             # ndf['pred_avail'] = test_y_pred_avail
 
