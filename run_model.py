@@ -9,16 +9,16 @@ in_features = ['pcp_mm', 'pcp3_mm', 'tide_cm', 'wat_temp_c', 'sal_psu',
 out_features = ['blaTEM_coppml']
 
 data_config = OrderedDict()
-lookback = 8
 BatchSize = 4
 data_config['in_features'] = in_features
 data_config['out_features'] = out_features
-data_config['normalize'] = True
+data_config['lookback'] = 8
+data_config['normalize'] = False
 data_config['freq'] = '30min'
 data_config['monitor'] = ['mse']  # , 'r2'
 data_config['batch_making_mode'] = 'sample_based'
 
-train_args = {'lookback': lookback,
+train_args = {'lookback': data_config['lookback'],
               'in_features': len(in_features),
               'out_features': len(out_features),
               'future_y_val': 1,
@@ -62,27 +62,22 @@ train_args = {'lookback': lookback,
 
 
 nn_config = OrderedDict()
-lstm_conf = {'lstm_units': 128, 'dropout': 0.3, 'act_f': 'relu', 'method': 'keras_lstm_layer', 'batch_norm': False}
-lstm_units = 128
-lr = 1e-6
-dropout = 0.3
-act_f = 'relu'
-nn_config['lstm_units'] = int(lstm_units)
-nn_config['lr'] = lr
-nn_config['method'] = 'keras_lstm_layer'
-nn_config['dropout'] = dropout
-nn_config['batch_norm'] = False
-nn_config['lstm_activation'] = None if nn_config['batch_norm'] else act_f
-nn_config['n_epochs'] = 10000
 
-nn_config['lookback'] = lookback
-nn_config['input_features'] = len(in_features)
-nn_config['output_features'] = len(out_features)
+nn_config['lstm_conf'] = {'lstm_units': 128,
+                          'dropout': 0.3,
+                          'lstm_activation': 'relu',  # will be none if batch_norm is True
+                          'method': 'keras_lstm_layer',
+                          'batch_norm': False}
+nn_config['1dCNN_after_lstm'] = {'filters': 64,
+                                 'kernel_size': 2,
+                                 'activation': 'relu',
+                                 'max_pool_size': 2}
+
+nn_config['lr'] = 1e-6
+nn_config['n_epochs'] = 10000
 nn_config['batch_size'] = BatchSize
 nn_config['loss'] = 'mse'   # options are mse/r2/nse/kge/mae, kge not working yet
 nn_config['clip_norm'] = 1.0  # None or any scaler value
-nn_config['1dCNN_after_lstm'] = {'filters': 64, 'kernel_size': 2, 'activation': 'relu', 'max_pool_size': 2}
-
 verbosity = 1
 
 # intervals = {'train_intervals': train_intervals,
@@ -100,8 +95,8 @@ model = Model(data_config=data_config,
               verbosity=verbosity)
 
 model.build_nn()
-saved_epochs, losses = model.train_nn()
-errors, neg_predictions = model.predict()
+# saved_epochs, losses = model.train_nn()
+# errors, neg_predictions = model.predict()
 
 # # to load and run checkpoints comment above two lines and uncomment following code
 # path = "D:\\dl_jiyi\\models\\20200603_2237"

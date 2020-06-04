@@ -47,8 +47,10 @@ class NNAttr(object):
     saved_epochs = AttributeNotSetYet('train')
     losses = AttributeNotSetYet('train')
 
-    def __init__(self):
-        pass
+    def __init__(self, data_config):
+        self.data_config = data_config
+        self.ins = len(self.data_config['in_features'])
+        self.outs = len(self.data_config['out_features'])
 
 
 class NeuralNetwork(NNAttr):
@@ -58,7 +60,7 @@ class NeuralNetwork(NNAttr):
         self.nn_config = nn_config
         self.path = path
         self.verbose = verbosity
-        super(NeuralNetwork, self).__init__()
+        super(NeuralNetwork, self).__init__(self.data_config)
 
     @property
     def cp_dir(self):
@@ -71,14 +73,14 @@ class NeuralNetwork(NNAttr):
 
         reset_graph()
 
-        self.x_ph = tf.compat.v1.placeholder(tf.float32, [None, self.nn_config['lookback'],
-                                                          self.nn_config['input_features']],
+        self.x_ph = tf.compat.v1.placeholder(tf.float32, [None, self.data_config['lookback'],
+                                                          self.ins],
                                              name='x_ph')  # self.nn_config['batch_size']
         self.obs_y_ph = tf.compat.v1.placeholder(tf.float32, [None, 1], name='obs_y_ph')
         self.mask_ph = tf.compat.v1.placeholder(tf.float32, [None, 1], name='mask_ph')  # self.nn_config['batch_size']
 
         # Add main LSTM to the graph
-        leaky_dense_inputs = self.add_lstm()
+        leaky_dense_inputs = self.add_lstm(self.nn_config['lstm_conf'])
 
         # 1D Convolution from outputs of LSTM but outputs are used from each previous steps i.e. return sequence
         # in upper LSTM is true
@@ -88,7 +90,7 @@ class NeuralNetwork(NNAttr):
         if self.verbose > 0:
             print(leaky_dense_inputs.shape, "dynamic_rnn/RNN outputs shape", leaky_dense_inputs.get_shape())
 
-        leaky_layer = LeakyDense2D(units=self.nn_config['output_features'], activation=tf.nn.elu, leaky_inputs=True,
+        leaky_layer = LeakyDense2D(units=self.outs, activation=tf.nn.elu, leaky_inputs=True,
                                    mask_array=self.mask_ph, verbose=self.verbose)  # tf.nn.elu
         dense_outputs = leaky_layer(leaky_dense_inputs)
 
@@ -122,20 +124,22 @@ class NeuralNetwork(NNAttr):
         self.training_op = optimizer.minimize(self.loss)
         self.saver = tf.compat.v1.train.Saver(max_to_keep=self.nn_config['n_epochs'])
 
-    def add_lstm(self):
+    def add_lstm(self, lstm_conf):
+
+        activation = None if lstm_conf['batch_norm'] else lstm_conf['lstm_activation']
 
         return_seq = True if '1dCNN_after_lstm' in self.nn_config else False
 
-        cell = LSTMCell(units=self.nn_config['lstm_units'], activation=self.nn_config['lstm_activation'])
+        cell = LSTMCell(units=lstm_conf['lstm_units'], activation=activation)
 
-        if self.nn_config['method'] == 'dynamic_rnn':
+        if lstm_conf['method'] == 'dynamic_rnn':
             rnn_outputs1, states = dynamic_rnn(cell, self.x_ph, dtype=tf.float32)
-            lstm_outputs = tf.reshape(rnn_outputs1[:, -1, :], [-1, self.nn_config['lstm_units']])
+            lstm_outputs = tf.reshape(rnn_outputs1[:, -1, :], [-1, lstm_conf['lstm_units']])
 
-        elif self.nn_config['method'] == 'keras_lstm_layer':
-            lstm_outputs = LSTM(self.nn_config['lstm_units'],
-                                activation=self.nn_config['lstm_activation'],
-                                input_shape=(self.nn_config['lookback'], self.nn_config['input_features']),
+        elif lstm_conf['method'] == 'keras_lstm_layer':
+            lstm_outputs = LSTM(lstm_conf['lstm_units'],
+                                activation=activation,
+                                input_shape=(self.data_config['lookback'], self.ins),
                                 return_sequences=return_seq)(self.x_ph)
 
         else:
@@ -143,16 +147,16 @@ class NeuralNetwork(NNAttr):
             lstm_outputs = rnn_layer(self.x_ph)  # [batch_size, neurons]
             if self.verbose > 0:
                 print(lstm_outputs.shape, 'before reshaping', K.eval(tf.rank(lstm_outputs)))
-            lstm_outputs = tf.reshape(lstm_outputs[:, :], [-1, self.nn_config['lstm_units']])
+            lstm_outputs = tf.reshape(lstm_outputs[:, :], [-1, lstm_conf['lstm_units']])
             if self.verbose > 0:
                 print(lstm_outputs.shape, 'after reshaping', K.eval(tf.rank(lstm_outputs)))
 
-        if self.nn_config['batch_norm']:
+        if lstm_conf['batch_norm']:
             rnn_outputs3 = BatchNormalization()(lstm_outputs)
             lstm_outputs = Activation('relu')(rnn_outputs3)
 
-        if self.nn_config['dropout'] is not None:
-            lstm_outputs = Dropout(self.nn_config['dropout'])(lstm_outputs)
+        if lstm_conf['dropout'] is not None:
+            lstm_outputs = Dropout(lstm_conf['dropout'])(lstm_outputs)
 
         return lstm_outputs
 
@@ -163,7 +167,7 @@ class NeuralNetwork(NNAttr):
         act = cnn_conf['activation']
         pool_sz = cnn_conf['max_pool_size']
         conv1 = Conv1D(filters=filters, kernel_size=kn, activation=act,
-                       input_shape=(self.nn_config['lookback'], self.nn_config['lstm_units']))(inputs)
+                       input_shape=(self.data_config['lookback'], self.nn_config['lstm_conf']['lstm_units']))(inputs)
         max1d1 = MaxPooling1D(pool_size=pool_sz)(conv1)
         outputs = Flatten()(max1d1)
         return outputs
@@ -300,8 +304,6 @@ class NeuralNetwork(NNAttr):
 
     def run_check_point(self, check_point, x_batches, y_batches, scalers):
 
-        n_outs = self.nn_config['output_features']
-
         with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
             self.saver.restore(sess, os.path.join(self.cp_dir, check_point))
 
@@ -310,10 +312,10 @@ class NeuralNetwork(NNAttr):
             print(iterations, 'iter')
 
             # data_set.shape[1] + 1
-            x_data = np.full((iterations * self.nn_config['batch_size'], self.nn_config['input_features']), np.nan)
+            x_data = np.full((iterations * self.nn_config['batch_size'], self.ins), np.nan)
 
-            y_pred = np.full((iterations * self.nn_config['batch_size'], n_outs), np.nan)
-            y_true = np.full((iterations * self.nn_config['batch_size'], n_outs), np.nan)
+            y_pred = np.full((iterations * self.nn_config['batch_size'], self.outs), np.nan)
+            y_true = np.full((iterations * self.nn_config['batch_size'], self.outs), np.nan)
             st = 0
             en = self.nn_config['batch_size']
             for i in range(iterations):
@@ -324,11 +326,11 @@ class NeuralNetwork(NNAttr):
 
                 if self.data_config['normalize']:
                     y_scaler = scalers[self.data_config['out_features'][0] + '_scaler']
-                    _y_pred = y_scaler.inverse_transform(_y_pred.reshape(-1, n_outs))
-                    y_batch = y_scaler.inverse_transform(y_batch.reshape(-1, n_outs))
+                    _y_pred = y_scaler.inverse_transform(_y_pred.reshape(-1, self.outs))
+                    y_batch = y_scaler.inverse_transform(y_batch.reshape(-1, self.outs))
 
-                y_pred[st:en, :] = _y_pred.reshape(-1, n_outs)
-                y_true[st:en, :] = y_batch.reshape(-1, n_outs)
+                y_pred[st:en, :] = _y_pred.reshape(-1, self.outs)
+                y_true[st:en, :] = y_batch.reshape(-1, self.outs)
 
                 for idx, dat in enumerate(self.data_config['in_features']):  # range(self.nn_config['input_features']):
                     value = test_x_batch[:, -1, idx].reshape(-1, 1)

@@ -22,8 +22,7 @@ np.printoptions(precision=5)
 
 DATA_CONF_KEYS = ['in_features', 'out_features', 'normalize', 'freq', 'monitor']
 
-NN_CONF_KEYS = ['lstm_units', 'lr', 'method', 'dropout', 'batch_norm', 'lstm_activation',
-                'n_epochs', 'lookback', 'input_features', 'output_features', 'batch_size', 'loss']
+NN_CONF_KEYS = ['lstm_conf', 'lr', 'n_epochs',  'batch_size', 'loss']
 
 INTERVALS_KEYS = ['train_intervals', 'test_intervals', 'all_intervals']
 
