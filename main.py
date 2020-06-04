@@ -134,7 +134,9 @@ class Model(nn, ModelAttr):
             self.batches[mode + '_index'],\
             self.batches[mode + '_tk_index'] = generate_sample_based_batches(self.args[mode + '_args'],
                                                                              self.nn_config['batch_size'],
-                                                                             dataset)
+                                                                             dataset,
+                                                                             self.intervals[mode + '_intervals']
+                                                                             )
         return
 
     def get_batches(self, dataset, mode):

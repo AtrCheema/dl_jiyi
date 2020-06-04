@@ -13,7 +13,7 @@ BatchSize = 4
 data_config['in_features'] = in_features
 data_config['out_features'] = out_features
 data_config['lookback'] = 8
-data_config['normalize'] = False
+data_config['normalize'] = True
 data_config['freq'] = '30min'
 data_config['monitor'] = ['mse']  # , 'r2'
 data_config['batch_making_mode'] = 'sample_based'
@@ -26,39 +26,6 @@ train_args = {'lookback': data_config['lookback'],
               'end': 1450,
               'trim_last_batch': True
               }
-#
-# total_intervals = {
-#     0:[i for i in range(0, 156, BatchSize)],
-#     1:[i for i in range(136, 407, BatchSize)],
-#     2:[i for i in range(412, 546, BatchSize)],
-#     3:[i for i in range(509, 580, BatchSize)],
-#     4:[i for i in range(533, 660, BatchSize)],
-#     5:[i for i in range(633, 730, BatchSize)],
-#     6:[i for i in range(730, 831, BatchSize)],
-#     7:[i for i in range(821, 971, BatchSize)],
-#     8:[i for i in range(941, 1071, BatchSize)],
-#     9:[i for i in range(1125, 1200, BatchSize)],
-#     10:[i for i in range(1172, 1210, BatchSize)],
-#     11:[i for i in range(1196, 1240, BatchSize)],
-#     12:[i for i in range(1220, 1317, BatchSize)],
-#     13:[i for i in range(1292, 1335, BatchSize)],
-#     14:[i for i in range(1316, 1447, BatchSize)]
-# }
-#
-# # tr_intervals = np.sort(random.sample(total_intervals.keys(), k=11))
-# tr_intervals = [0,  1,  2,  3,  4,  7,  9, 10, 11, 13, 14]
-# train_intervals = []
-# test_intervals = []
-#
-# for key in total_intervals.keys():
-#     if key in tr_intervals:
-#         train_intervals.append(total_intervals[key])
-#         print('train: ', key)
-#     else:
-#         test_intervals.append(total_intervals[key])
-#         print('test: ', key)
-#
-# all_intervals = list(total_intervals.values())
 
 
 nn_config = OrderedDict()
@@ -74,15 +41,25 @@ nn_config['1dCNN_after_lstm'] = {'filters': 64,
                                  'max_pool_size': 2}
 
 nn_config['lr'] = 1e-6
-nn_config['n_epochs'] = 10000
+nn_config['n_epochs'] = 500
 nn_config['batch_size'] = BatchSize
 nn_config['loss'] = 'mse'   # options are mse/r2/nse/kge/mae, kge not working yet
 nn_config['clip_norm'] = 1.0  # None or any scaler value
 verbosity = 1
 
-# intervals = {'train_intervals': train_intervals,
-#              'test_intervals': test_intervals,
-#              'all_intervals': all_intervals}
+
+total_intervals = {
+    0: [i for i in range(0, 152, BatchSize)],
+    1: [i for i in range(140, 390, BatchSize)],
+    2: [i for i in range(380, 630, BatchSize)],
+    3: [i for i in range(625, 825, BatchSize)],
+    4: [i for i in range(820, 1110, BatchSize)],
+    5: [i for i in range(1110, 1447, BatchSize)]
+}
+
+intervals = {'train_intervals': total_intervals,
+             'test_intervals': total_intervals,
+             'all_intervals': total_intervals}
 
 args = {'train_args': train_args.copy(),
         'test_args': train_args.copy(),
@@ -91,15 +68,15 @@ args = {'train_args': train_args.copy(),
 model = Model(data_config=data_config,
               nn_config=nn_config,
               args=args,
-              intervals=None,
+              intervals=intervals,
               verbosity=verbosity)
 
 model.build_nn()
-# saved_epochs, losses = model.train_nn()
-# errors, neg_predictions = model.predict()
+saved_epochs, losses = model.train_nn()
+errors, neg_predictions = model.predict()
 
 # # to load and run checkpoints comment above two lines and uncomment following code
-# path = "D:\\dl_jiyi\\models\\20200603_2237"
+# path = "D:\\dl_jiyi\\models\\20200604_0023"
 # model = Model.from_config(path)
 # model.build_nn()
 # model.predict()

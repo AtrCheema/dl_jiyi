@@ -716,7 +716,7 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
     return x_batches, y_batches, no_of_batches, index_batches[1:].astype(np.int64), no_of_samples
 
 
-def generate_sample_based_batches(args, batch_size, data,
+def generate_sample_based_batches(args, batch_size, data, intervals,
                                   verbosity=1):
 
     if args['out_features'] > 1:
@@ -726,14 +726,12 @@ def generate_sample_based_batches(args, batch_size, data,
 
     args['out_features'] = args['out_features'] + 2
 
-    predef_intervals = [i for i in range(args['start'], args['end'], batch_size)]
+    if intervals is None:
+        predef_intervals = [[i for i in range(args['start'], args['end'], batch_size)]]
+    else:
+        predef_intervals = list(intervals.values())
 
-    event_intvl = check_interval_validity(predef_intervals, data.shape[0])
-
-    event_generator = BatchGenerator(data, batch_size, args, verbose=verbosity)
-    _gen = event_generator.many_to_one(predef_interval=event_intvl)
-
-    def find_no_batches(total_samples, _generator):
+    def find_no_batches(total_samples, _generator, _gen_object):
 
         _batch, _y_batch = next(_generator)
         first_idx = _y_batch[0, 1].astype(np.int64)
@@ -746,9 +744,10 @@ def generate_sample_based_batches(args, batch_size, data,
                 print('found at ', batch)
                 break
 
-        return batch+1
+        if batch > _gen_object.no_of_batches:
+            batch = _gen_object.no_of_batches
 
-    no_of_batches = find_no_batches(args['end'], _gen)
+        return batch+1
 
     batch_size = batch_size
     lookback = args['lookback']
@@ -762,39 +761,48 @@ def generate_sample_based_batches(args, batch_size, data,
 
     no_of_batches_recalc = 0
 
-    for i in range(no_of_batches):
+    for event_interval in predef_intervals:
+        event_intvl = check_interval_validity(event_interval, data.shape[0])
 
-        mask_x_batch, mask_y_batch = next(_gen)
+        event_generator = BatchGenerator(data, batch_size, args, verbose=verbosity)
+        _gen = event_generator.many_to_one(predef_interval=event_intvl)
 
-        # for out_feat in range(out_features-2):
+        no_of_batches = find_no_batches(args['end'], _gen, event_generator)
 
-        to_keep = mask_y_batch[:, -1]
-        dt_idx = mask_y_batch[:, -2]
-        to_keep_non_zero,  = np.where(to_keep > 0.0)
+        for i in range(no_of_batches):
 
-        to_keep_idx, = np.where(to_keep > 0.0)
+            mask_x_batch, mask_y_batch = next(_gen)
 
-        if len(to_keep_non_zero) > 0:
+            # for out_feat in range(out_features-2):
 
-            if sum(mask_y_batch[:, 0]) < 0.1:
-                raise ValueError
+            to_keep = mask_y_batch[:, -1]
+            dt_idx = mask_y_batch[:, -2]
+            to_keep_non_zero,  = np.where(to_keep > 0.0)
 
-            x_batches_list.append(mask_x_batch)
-            target_y = np.zeros(mask_y_batch[:, 0].shape)
-            target_y[to_keep_idx] = mask_y_batch[:, 0][to_keep_idx]
+            to_keep_idx, = np.where(to_keep > 0.0)
 
-            if np.sum(target_y) > 0.0:
-                no_of_batches_recalc += 1
+            if len(to_keep_non_zero) > 0:
 
-                y_batches_list.append(target_y)
-                dt_batches_list.append(dt_idx)
-                tk_batches_list.append(to_keep)
-                print("batch {} has {} samples at index {}, total batches {}".format(i, len(to_keep_idx),
-                                                                                     to_keep_idx, no_of_batches_recalc))
+                if sum(mask_y_batch[:, 0]) < 0.1:
+                    raise ValueError
+
+                x_batches_list.append(mask_x_batch)
+                target_y = np.zeros(mask_y_batch[:, 0].shape)
+                target_y[to_keep_idx] = mask_y_batch[:, 0][to_keep_idx]
+
+                if np.sum(target_y) > 0.0:
+                    no_of_batches_recalc += 1
+
+                    y_batches_list.append(target_y)
+                    dt_batches_list.append(dt_idx)
+                    tk_batches_list.append(to_keep)
+                    print("batch {} has {} samples at index {}, total batches {}".format(i, len(to_keep_idx),
+                                                                                         to_keep_idx,
+                                                                                         no_of_batches_recalc))
+                else:
+                    print("WARNING: target_y was all zeros so ignored for batch", i)
             else:
-                print("WARNING: target_y was all zeros so ignored for batch", i)
-        else:
-            print("ignoring batch", i)
+                print("ignoring batch", i)
 
     x_batches = np.full((no_of_batches_recalc, batch_size, lookback, in_features), np.nan)
     y_batches = np.full((no_of_batches_recalc, batch_size, out_features-2), np.nan)
