@@ -1,6 +1,7 @@
 __all__ = ["NeuralNetwork"]
 
 from tensorflow.keras.layers import LSTMCell, Dropout, LSTM, BatchNormalization, Activation
+from tensorflow.keras.layers import MaxPooling1D, Flatten, Conv1D
 from tensorflow.python.keras.layers import RNN
 import tensorflow as tf
 import tensorflow.keras.backend as K
@@ -70,63 +71,45 @@ class NeuralNetwork(NNAttr):
 
         reset_graph()
 
-        n_steps = self.nn_config['lookback']
-
-        self.x_ph = tf.compat.v1.placeholder(tf.float32, [None, n_steps, self.nn_config['input_features']],
+        self.x_ph = tf.compat.v1.placeholder(tf.float32, [None, self.nn_config['lookback'],
+                                                          self.nn_config['input_features']],
                                              name='x_ph')  # self.nn_config['batch_size']
         self.obs_y_ph = tf.compat.v1.placeholder(tf.float32, [None, 1], name='obs_y_ph')
         self.mask_ph = tf.compat.v1.placeholder(tf.float32, [None, 1], name='mask_ph')  # self.nn_config['batch_size']
 
-        cell = LSTMCell(units=self.nn_config['lstm_units'], activation=self.nn_config['lstm_activation'])
+        # Add main LSTM to the graph
+        leaky_dense_inputs = self.add_lstm()
 
-        if self.nn_config['method'] == 'dynamic_rnn':
-            rnn_outputs1, states = dynamic_rnn(cell, self.x_ph, dtype=tf.float32)
-            rnn_outputs = tf.reshape(rnn_outputs1[:, -1, :], [-1, self.nn_config['lstm_units']])
-
-        elif self.nn_config['method'] == 'keras_lstm_layer':
-            rnn_outputs = LSTM(self.nn_config['lstm_units'],
-                               activation=self.nn_config['lstm_activation'],
-                               input_shape=(n_steps, self.nn_config['input_features']))(self.x_ph)
-
-        else:
-            rnn_layer = RNN(cell)
-            rnn_outputs = rnn_layer(self.x_ph)  # [batch_size, neurons]
-            if self.verbose > 0:
-                print(rnn_outputs.shape, 'before reshaping', K.eval(tf.rank(rnn_outputs)))
-            rnn_outputs = tf.reshape(rnn_outputs[:, :], [-1, self.nn_config['lstm_units']])
-            if self.verbose > 0:
-                print(rnn_outputs.shape, 'after reshaping', K.eval(tf.rank(rnn_outputs)))
-
-        if self.nn_config['batch_norm']:
-            rnn_outputs3 = BatchNormalization()(rnn_outputs)
-            rnn_outputs = Activation('relu')(rnn_outputs3)
-
-        if self.nn_config['dropout'] is not None:
-            rnn_outputs = Dropout(self.nn_config['dropout'])(rnn_outputs)
+        # 1D Convolution from outputs of LSTM but outputs are used from each previous steps i.e. return sequence
+        # in upper LSTM is true
+        if self.nn_config['1dCNN_after_lstm']:
+            leaky_dense_inputs = self.add_1dcnn(self.nn_config['1dCNN_after_lstm'], leaky_dense_inputs)
 
         if self.verbose > 0:
-            print(rnn_outputs.shape, "dynamic_rnn/RNN outputs shape", rnn_outputs.get_shape())
+            print(leaky_dense_inputs.shape, "dynamic_rnn/RNN outputs shape", leaky_dense_inputs.get_shape())
 
         leaky_layer = LeakyDense2D(units=self.nn_config['output_features'], activation=tf.nn.elu, leaky_inputs=True,
                                    mask_array=self.mask_ph, verbose=self.verbose)  # tf.nn.elu
-        dense_outputs = leaky_layer(rnn_outputs)
+        dense_outputs = leaky_layer(leaky_dense_inputs)
 
         self.nn_config['dense_activation'] = leaky_layer.activation.__name__
 
-        outputs = tf.reshape(dense_outputs, [-1, 1])  # this is because observations will also be flattened
+        predictions = tf.reshape(dense_outputs, [-1, 1])  # this is because observations will also be flattened
         self.full_outputs = leaky_layer.full_outputs
 
         if self.verbose > 0:
-            print(outputs.shape, 'shape outputs')
+            print(predictions.shape, 'shape outputs')
 
         if self.nn_config['loss'] == 'mse':
-            self.loss = tf_mse(self.obs_y_ph, outputs)
+            self.loss = tf_mse(self.obs_y_ph, predictions)
         elif self.nn_config['loss'] == 'nse':
-            self.loss = tf_nse(self.obs_y_ph, outputs)
+            self.loss = tf_nse(self.obs_y_ph, predictions)
         elif self.nn_config['loss'] == 'r2':
-            self.loss = tf_r2(self.obs_y_ph, outputs, 'r2')
+            self.loss = tf_r2(self.obs_y_ph, predictions, 'r2')
         elif self.nn_config['loss'] == 'kge':
-            self.loss = tf_kge(self.obs_y_ph, outputs)
+            self.loss = tf_kge(self.obs_y_ph, predictions)
+        elif self.nn_config['loss'] == 'mae':
+            self.loss = tf.keras.losses.MAE(self.obs_y_ph, predictions)
         else:
             raise ValueError("unknown loss type {} ".format(self.nn_config['loss']))
 
@@ -138,6 +121,52 @@ class NeuralNetwork(NNAttr):
 
         self.training_op = optimizer.minimize(self.loss)
         self.saver = tf.compat.v1.train.Saver(max_to_keep=self.nn_config['n_epochs'])
+
+    def add_lstm(self):
+
+        return_seq = True if '1dCNN_after_lstm' in self.nn_config else False
+
+        cell = LSTMCell(units=self.nn_config['lstm_units'], activation=self.nn_config['lstm_activation'])
+
+        if self.nn_config['method'] == 'dynamic_rnn':
+            rnn_outputs1, states = dynamic_rnn(cell, self.x_ph, dtype=tf.float32)
+            lstm_outputs = tf.reshape(rnn_outputs1[:, -1, :], [-1, self.nn_config['lstm_units']])
+
+        elif self.nn_config['method'] == 'keras_lstm_layer':
+            lstm_outputs = LSTM(self.nn_config['lstm_units'],
+                                activation=self.nn_config['lstm_activation'],
+                                input_shape=(self.nn_config['lookback'], self.nn_config['input_features']),
+                                return_sequences=return_seq)(self.x_ph)
+
+        else:
+            rnn_layer = RNN(cell, return_sequences=return_seq)
+            lstm_outputs = rnn_layer(self.x_ph)  # [batch_size, neurons]
+            if self.verbose > 0:
+                print(lstm_outputs.shape, 'before reshaping', K.eval(tf.rank(lstm_outputs)))
+            lstm_outputs = tf.reshape(lstm_outputs[:, :], [-1, self.nn_config['lstm_units']])
+            if self.verbose > 0:
+                print(lstm_outputs.shape, 'after reshaping', K.eval(tf.rank(lstm_outputs)))
+
+        if self.nn_config['batch_norm']:
+            rnn_outputs3 = BatchNormalization()(lstm_outputs)
+            lstm_outputs = Activation('relu')(rnn_outputs3)
+
+        if self.nn_config['dropout'] is not None:
+            lstm_outputs = Dropout(self.nn_config['dropout'])(lstm_outputs)
+
+        return lstm_outputs
+
+    def add_1dcnn(self, cnn_conf, inputs):
+
+        filters = cnn_conf['filters']
+        kn = cnn_conf['kernel_size']
+        act = cnn_conf['activation']
+        pool_sz = cnn_conf['max_pool_size']
+        conv1 = Conv1D(filters=filters, kernel_size=kn, activation=act,
+                       input_shape=(self.nn_config['lookback'], self.nn_config['lstm_units']))(inputs)
+        max1d1 = MaxPooling1D(pool_size=pool_sz)(conv1)
+        outputs = Flatten()(max1d1)
+        return outputs
 
     def train(self, train_batches, val_batches, monitor):
 
@@ -283,29 +312,23 @@ class NeuralNetwork(NNAttr):
             # data_set.shape[1] + 1
             x_data = np.full((iterations * self.nn_config['batch_size'], self.nn_config['input_features']), np.nan)
 
-            _y_pred = np.full((iterations * self.nn_config['batch_size'], n_outs), np.nan)
-            _y_true = np.full((iterations * self.nn_config['batch_size'], n_outs), np.nan)
+            y_pred = np.full((iterations * self.nn_config['batch_size'], n_outs), np.nan)
+            y_true = np.full((iterations * self.nn_config['batch_size'], n_outs), np.nan)
             st = 0
             en = self.nn_config['batch_size']
             for i in range(iterations):
                 test_x_batch, y_batch = x_batches[i], y_batches[i]
 
-                y_pred = sess.run(self.full_outputs,
-                                  feed_dict={self.x_ph: test_x_batch, self.mask_ph: y_batch.reshape(-1, 1)})
+                _y_pred = sess.run(self.full_outputs,
+                                   feed_dict={self.x_ph: test_x_batch, self.mask_ph: y_batch.reshape(-1, 1)})
 
                 if self.data_config['normalize']:
                     y_scaler = scalers[self.data_config['out_features'][0] + '_scaler']
-                    y_pred = y_scaler.inverse_transform(y_pred.reshape(-1, n_outs))
+                    _y_pred = y_scaler.inverse_transform(_y_pred.reshape(-1, n_outs))
                     y_batch = y_scaler.inverse_transform(y_batch.reshape(-1, n_outs))
 
-                    # TODO why we need to creat `y` while it works for "event_based_batches" without creating `y`
-                    # `y` is created because when we denormalize `y_batch`, the 0s are also denormalized which we
-                    # don't want. We want `0s` as it is.
-                    # y = np.full(y_batch.shape, np.nan)
-                    # y[y_of_interest_m[0]] = y_batch[y_of_interest_m[0]]
-
-                _y_pred[st:en, :] = y_pred.reshape(-1, n_outs)
-                _y_true[st:en, :] = y_batch.reshape(-1, n_outs)
+                y_pred[st:en, :] = _y_pred.reshape(-1, n_outs)
+                y_true[st:en, :] = y_batch.reshape(-1, n_outs)
 
                 for idx, dat in enumerate(self.data_config['in_features']):  # range(self.nn_config['input_features']):
                     value = test_x_batch[:, -1, idx].reshape(-1, 1)
@@ -319,4 +342,4 @@ class NeuralNetwork(NNAttr):
                 st += self.nn_config['batch_size']
                 en += self.nn_config['batch_size']
 
-        return x_data, _y_pred, _y_true
+        return x_data, y_pred, y_true
