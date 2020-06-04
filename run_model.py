@@ -30,18 +30,18 @@ train_args = {'lookback': data_config['lookback'],
 
 nn_config = OrderedDict()
 
-nn_config['lstm_conf'] = {'lstm_units': 128,
-                          'dropout': 0.3,
-                          'lstm_activation': 'relu',  # will be none if batch_norm is True
-                          'method': 'keras_lstm_layer',
-                          'batch_norm': False}
-nn_config['1dCNN_after_lstm'] = {'filters': 64,
-                                 'kernel_size': 2,
-                                 'activation': 'relu',
-                                 'max_pool_size': 2}
+# nn_config['lstm_conf'] = {'lstm_units': 128,
+#                           'dropout': 0.3,
+#                           'lstm_activation': 'relu',  # will be none if batch_norm is True
+#                           'method': 'keras_lstm_layer',
+#                           'batch_norm': False}
+nn_config['1dCNN'] = {'filters': 64,
+                      'kernel_size': 2,
+                      'activation': 'relu',
+                      'max_pool_size': 2}
 
 nn_config['lr'] = 1e-6
-nn_config['n_epochs'] = 500
+nn_config['n_epochs'] = 15
 nn_config['batch_size'] = BatchSize
 nn_config['loss'] = 'mse'   # options are mse/r2/nse/kge/mae, kge not working yet
 nn_config['clip_norm'] = 1.0  # None or any scaler value
