@@ -950,16 +950,22 @@ def dateandtime_now():
     return save_dir
 
 
-def save_config_file(config, _path, from_config=False):
+def save_config_file(path, config=None, errors=None):
 
-    if from_config:
+    if errors is not None:
         suffix = dateandtime_now()
-        config_file = _path + "/config" + suffix + ".json"
+        fpath = path + "/errors" + suffix + ".json"
+        data = errors
+    elif config is not None:
+        fpath = path + "/config.json"
+        data = config
     else:
-        config_file = _path + "/config.json"
+        raise ValueError("")
 
-    with open(config_file, 'w') as fp:
-        json.dump(config, fp, sort_keys=True, indent=4)
+    with open(fpath, 'w') as fp:
+        json.dump(data, fp, sort_keys=True, indent=4)
+
+    return
 
 
 def plot_scatter(true, pred, _name, searborn=True):

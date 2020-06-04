@@ -95,6 +95,8 @@ class Model(nn, ModelAttr):
 
         print('\n', '*' * 14)
         print("creating data for {} mode".format(mode))
+        print('*' * 14)
+
         in_features = self.data_config['in_features']
         out_features = self.data_config['out_features']
 
@@ -134,7 +136,6 @@ class Model(nn, ModelAttr):
             self.batches[mode + '_tk_index'] = generate_sample_based_batches(self.args[mode + '_args'],
                                                                              self.nn_config['batch_size'],
                                                                              dataset)
-        print('*' * 14, '\n')
         return
 
     def get_batches(self, dataset, mode):
@@ -238,28 +239,37 @@ class Model(nn, ModelAttr):
             errors[m + '_errors'] = _errors
             neg_predictions[m + '_neg_predictions'] = _neg_predictions
 
-        self.save_config(errors=errors, neg_predictions=neg_predictions)
+        self.save_errors(errors, neg_predictions)
 
         return errors, neg_predictions
 
-    def save_config(self, errors=None, neg_predictions=None):
+    def save_errors(self, errors, neg_predictions):
+
+        config = OrderedDict()
+        config['errors'] = errors
+        # neg predictions are found after `predict` method so saving now and not in config file.
+        config['neg_predictions'] = neg_predictions
+
+        save_config_file(errors=config, path=self.path)
+
+        return
+
+    def save_config(self):
 
         config = OrderedDict()
         config['comment'] = 'use point source pollutant data along with best model from grid search'
         config['nn_config'] = self.nn_config
         config['data_config'] = self.data_config
-        config['test_errors'] = errors
         config['test_sample_idx'] = 'test_idx'
         config['start_time'] = self.nn_config['start_time'] if 'start_time' in self.nn_config else " "
         config['end_time'] = self.nn_config['end_time'] if 'end_time' in self.nn_config else " "
-        # config["saved_epochs"] = self.saved_epochs
+        config["saved_epochs"] = self.saved_epochs
         config['intervals'] = self.intervals
         config['args'] = self.args
         config['train_time'] = self.nn_config['train_duration'] if 'train_duration' in self.nn_config else " "
         config['final_comment'] = """ """
-        config['negative_predictions'] = neg_predictions
 
-        save_config_file(config, self.path, from_config=self._from_config)
+        save_config_file(config=config, path=self.path)
         return config
 
     def handle_losses(self):
