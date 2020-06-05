@@ -292,12 +292,14 @@ class NeuralNetwork(NNAttr):
                                                     ps, save_fg, to_save)
 
                 if save_fg:
-                    self.saver.save(sess, save_path=os.path.join(self.cp_dir, 'checkpoints'),  global_step=epoch)
+                    self.saver.save(sess, save_path=os.path.join(self.cp_dir, 'checkpoints.ckpt'),
+                                    global_step=epoch)
 
                 print(epoch, ps)
 
                 if epoch > (self.nn_config['n_epochs']-2):
-                    self.saver.save(sess, save_path=os.path.join(self.cp_dir, 'checkpoints'),  global_step=epoch)
+                    self.saver.save(sess, save_path=os.path.join(self.cp_dir, 'checkpoints.ckpt'),
+                                    global_step=epoch)
 
         en_t, self.nn_config['end_time'] = time.time(), time.asctime()
         train_time = (en_t - st_t) / 60.0 / 60.0

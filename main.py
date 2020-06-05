@@ -144,9 +144,9 @@ class Model(nn, ModelAttr):
         skip_batch_with_no_labels = True
         raise_errors = True
         if self.data_config['batch_making_mode'] == 'sample_based':
-            st = self.args['all_args']['start']
-            en = self.args['all_args']['end']
-            self.intervals = {'all_intervals': [[i for i in range(st, en, self.nn_config['batch_size'])]]}
+            # st = self.args['all_args']['start']
+            # en = self.args['all_args']['end']
+            # self.intervals = {'all_intervals': [[i for i in range(st, en, self.nn_config['batch_size'])]]}
             raise_errors = False
             skip_batch_with_no_labels = False
 

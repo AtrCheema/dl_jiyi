@@ -14,7 +14,6 @@ def make_predictions(x_batches,
                      y_batches,
                      model,
                      epochs_to_evaluate,
-                     # scalers,
                      runtype,
                      save_results=False):
 
@@ -24,12 +23,12 @@ def make_predictions(x_batches,
         sub_path = model.path + '/' + str(ep)
         maybe_create_path(path=sub_path)
 
-        check_point = "checkpoints-" + str(ep)
+        check_point = "checkpoints.ckpt-" + str(ep)
 
         x_data, _y_pred, _y_true = model.run_check_point(check_point=check_point,
-                                                                 x_batches=x_batches,
-                                                                 y_batches=y_batches,
-                                                                 scalers=model.scalers[runtype])
+                                                         x_batches=x_batches,
+                                                         y_batches=y_batches,
+                                                         scalers=model.scalers[runtype])
 
         # create a separate folder for each target and save its relevent data in that folder
         for idx, out in enumerate(model.data_config['out_features']):

@@ -661,6 +661,10 @@ def check_interval_validity(interval, check_against):
 def generate_event_based_batches(data, batch_size, args, predef_intervals, verbosity=1,
                                  raise_error=True,
                                  skip_batch_with_no_labels=False):
+
+    if isinstance(predef_intervals, dict):
+        predef_intervals = list(predef_intervals.values())
+
     args = deepcopy(args)
     # increasing out_feature by 1 here because the last column in `data` consists of datetime, which is not actually
     # part of data but we want batches from that column as well similar to that of batches of target data.
@@ -911,15 +915,15 @@ def copy_check_points(_saved_epochs, cp_path):
     cp_to_copy = cp_to_copy[cp_to_copy != 1]
     cp_copied = []
     for chpt in cp_to_copy:
-        data_file = os.path.join(cp_path, "checkpoints-" + str(chpt) + ".data-00000-of-00001")
+        data_file = os.path.join(cp_path, "checkpoints.ckpt-" + str(chpt) + ".data-00000-of-00001")
         if os.path.exists(data_file):
             cp_copied.append(chpt)
             dstn_folder = os.path.dirname(cp_path)
-            copyfile(data_file, os.path.join(dstn_folder, "checkpoints-" + str(chpt) + ".data-00000-of-00001"))
-            idx_file = os.path.join(cp_path, "checkpoints-" + str(chpt) + ".index")
-            copyfile(idx_file, os.path.join(dstn_folder, "checkpoints-" + str(chpt) + ".index"))
-            meta_file = os.path.join(cp_path, "checkpoints-" + str(chpt) + ".meta")
-            copyfile(meta_file, os.path.join(dstn_folder, "checkpoints-" + str(chpt) + ".meta"))
+            copyfile(data_file, os.path.join(dstn_folder, "checkpoints.ckpt-" + str(chpt) + ".data-00000-of-00001"))
+            idx_file = os.path.join(cp_path, "checkpoints.ckpt-" + str(chpt) + ".index")
+            copyfile(idx_file, os.path.join(dstn_folder, "checkpoints.ckpt-" + str(chpt) + ".index"))
+            meta_file = os.path.join(cp_path, "checkpoints.ckpt-" + str(chpt) + ".meta")
+            copyfile(meta_file, os.path.join(dstn_folder, "checkpoints.ckpt-" + str(chpt) + ".meta"))
 
     return [int(cp) for cp in cp_copied]
 
