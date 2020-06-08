@@ -48,7 +48,7 @@ colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
           'Training NSE': np.array([0.13778617, 0.06228198, 0.33547859]),
           'Validation NSE': np.array([0.96707953, 0.46268314, 0.45772886]),
           'aac_coppml': np.array([0.17221373, 0.53023578, 0.96788307]),
-          'blaTEM_coppml': np.array([0.66413778, 0.35891819, 0.69004812]),
+          'blaTEM_coppml': np.array([1.0, 0.0, 0.0]),  # red
           'Total_otus': np.array([0.92875036, 0.09364162, 0.33348078]),
           'Total_args': np.array([0.93950089, 0.64582256, 0.16928645]),
           'tetx_coppml': np.array([0.06802773, 0.46382623, 0.49007703]),
@@ -57,8 +57,10 @@ colors = {'pcp12': np.array([0.07233712, 0.470282, 0.24355425]),
           'sul1_coppml': np.array([0.26900851, 0.96337978, 0.94641933]),
           'otu_273': np.array([0.95896577, 0.58394066, 0.04189788]),
           '16s': np.array([0.17877267, 0.78893675, 0.92613355]),
-          'true': np.array([0.94577241, 0.08725546, 0.11906984]),
-          'rel_hum':  np.array([0.56884807, 0.27000573, 0.03299844])
+          'true': np.array([00, 0.5, 0.0]),  # green
+          'rel_hum':  np.array([0.56884807, 0.27000573, 0.03299844]),
+          'train': np.array([0.0, 0.0, 0.0]),  # black
+          'blaTEM': np.array([0.0, 0.0, 1.0])  # blue
           }
 
 
@@ -223,8 +225,7 @@ def set_fig_dim(fig, width, height):
     fig.set_figheight(height)
 
 
-def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_ms=4, obs_logy=False, p_ylim=None,
-            single_ax_plots=None):
+def do_plot(data, cols, st=None, en=None, save_name=None, obs_logy=False, single_ax_plots=None):
 
     # plotting zeros just clutters the space and is of no purpose
     data = data.copy()
@@ -246,7 +247,12 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
                 cols.remove(name)
                 no_of_plots -= 1
 
-    _fig, axis = plt.subplots(no_of_plots, sharex='all')
+    widths = [2]
+    heights = [1 for _ in range(no_of_plots)]
+    heights[-1] = 3
+    gs_kw = dict(width_ratios=widths, height_ratios=heights)
+
+    _fig, axis = plt.subplots(no_of_plots, sharex='all', gridspec_kw=gs_kw)
     set_fig_dim(_fig, 19, 16)
 
     idx = 0
@@ -255,10 +261,8 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
             style = '-'
             invert_yaxis = False
             if 'pcp' in cols[idx]:
-                style = '-'
                 invert_yaxis = True
             _data = data[cols[idx]][st:en].values
-            process_axis(ax, _data, style='o', ms=4, label=cols[idx])
             process_axis(ax, _data, style=style, ms=4, label=cols[idx], show_xaxis=False, bottom_spine=False, leg_fs=14,
                          invert_yaxis=invert_yaxis, verbose=True)
 
@@ -266,16 +270,15 @@ def do_plot(data, cols, st=None, en=None, save_name=None, pre_train=False, sim_m
             if single_ax_plots is not None:
                 for col in single_ax_plots:
                     val = col
-                    ms = 4
+                    ms = 6
                     style = '.'
                     if val in ['true', 'Excluded from training']:
                         ms = 10
                         style = '*'
 
                     _data = data[col][st:en].values
-                    # process_axis(ax, _data, style='*', ms=ms, label=val, verbose=True)
-                    process_axis(ax, _data, style=style, ms=ms, leg_ms=1, label=val, leg_fs=14, leg_pos='upper left',
-                                 verbose=True)
+                    process_axis(ax, _data, style=style, ms=ms, leg_ms=2, label=val, leg_fs=14, leg_pos='upper left',
+                                 verbose=True, xl_fs=16)
             else:
                 val = cols[idx]
                 _data = data[cols[idx]][st:en].values

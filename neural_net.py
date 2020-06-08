@@ -131,7 +131,7 @@ class NeuralNetwork(NNAttr):
 
             activation = None if lstm_conf['batch_norm'] else lstm_conf['lstm_activation']
 
-            return_seq = True if '1dCNN_after_lstm' in self.nn_config else False
+            return_seq = True if '1dCNN' in self.nn_config else False
 
             cell = LSTMCell(units=lstm_conf['lstm_units'], activation=activation)
 

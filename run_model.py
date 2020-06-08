@@ -30,11 +30,11 @@ def make_model(batch_size, n_epochs):
 
     _nn_config = OrderedDict()
 
-    # nn_config['lstm_conf'] = {'lstm_units': 128,
-    #                           'dropout': 0.3,
-    #                           'lstm_activation': 'relu',  # will be none if batch_norm is True
-    #                           'method': 'keras_lstm_layer',
-    #                           'batch_norm': False}
+    _nn_config['lstm_conf'] = {'lstm_units': 128,
+                               'dropout': 0.3,
+                               'lstm_activation': 'relu',  # will be none if batch_norm is True
+                               'method': 'keras_lstm_layer',
+                               'batch_norm': False}
     _nn_config['1dCNN'] = {'filters': 64,
                            'kernel_size': 2,
                            'activation': 'relu',
@@ -69,18 +69,18 @@ def make_model(batch_size, n_epochs):
 
 data_config, nn_config, args, intervals, verbosity = make_model(4, 15)
 
-model = Model(data_config=data_config,
-              nn_config=nn_config,
-              args=args,
-              intervals=intervals,
-              verbosity=verbosity)
-
-model.build_nn()
-saved_epochs, losses = model.train_nn()
-errors, neg_predictions = model.predict()
+# model = Model(data_config=data_config,
+#               nn_config=nn_config,
+#               args=args,
+#               intervals=intervals,
+#               verbosity=verbosity)
+#
+# model.build_nn()
+# saved_epochs, losses = model.train_nn()
+# errors, neg_predictions = model.predict()
 
 # # to load and run checkpoints comment above two lines and uncomment following code
-# path = "D:\\dl_jiyi\\models\\20200605_0954"
-# model = Model.from_config(path)
-# model.build_nn()
-# model.predict(mode='all')
+path = "D:\\dl_jiyi\\models\\LSTM-CNN\\LSTM_CNN_bs24_ep15T"
+model = Model.from_config(path)
+model.build_nn()
+model.predict(mode='all', epochs_to_eval=9407)
