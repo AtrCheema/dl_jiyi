@@ -195,6 +195,9 @@ class Model(nn, ModelAttr):
                    monitor=self.data_config['monitor'])
 
         self.handle_losses()
+        # saving every 1000th epoch just in case they may contain some interesting information
+        random_epochs = {'last_'+str(val): int(val) for val in np.arange(0, self.nn_config['n_epochs'], 1000)}
+        self.saved_epochs.update(random_epochs)
 
         saved_unique_cp = copy_check_points(self.saved_epochs, os.path.join(self.path, 'check_points'))
         self.data_config['saved_unique_cp'] = saved_unique_cp
@@ -333,7 +336,7 @@ class Model(nn, ModelAttr):
             fpath = os.path.join(self.path, 'check_points')
             files = ['.index', '.meta', '.data-00000-of-00001']
             for f in files:
-                fname = os.path.join(fpath, 'checkpoints-' + str(epoch) + f)
+                fname = os.path.join(fpath, 'checkpoints.ckpt-' + str(epoch) + f)
                 if os.path.exists(fname):
                     os.remove(fname)
 
