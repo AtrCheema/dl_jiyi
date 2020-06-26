@@ -221,7 +221,7 @@ class NeuralNetwork(NNAttr):
         init = tf.compat.v1.global_variables_initializer()
 
         with tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options)) as sess:
-            writer = tf.compat.v1.summary.FileWriter('./graph/leaky_lstm', sess.graph)
+            writer = tf.compat.v1.summary.FileWriter(self.cp_dir, sess.graph)
             init.run()
 
             for epoch in range(self.nn_config['n_epochs']):
@@ -232,7 +232,7 @@ class NeuralNetwork(NNAttr):
                     x_batch, mask_y_batch = train_x[bat], train_y[bat]
 
                     # original mask_y_batch can contain have >1 second dimensions but we flatten it into 1D
-                    mask_y_batch = mask_y_batch.reshape(-1, 1)  # mask_y_batch will be used to slice dense layer outputs
+                    mask_y_batch = mask_y_batch.transpose().reshape(-1, 1)  # mask_y_batch will be used to slice dense layer outputs
 
                     y_of_interest = mask_y_batch[np.where(mask_y_batch > 0.0)].reshape(-1, 1)
 

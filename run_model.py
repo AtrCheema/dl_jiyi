@@ -6,7 +6,7 @@ def make_model(batch_size, lookback, n_epochs, lr, lstm_act, cnn_act, lstm_units
 
     in_features = ['pcp_mm', 'pcp3_mm', 'tide_cm', 'wat_temp_c', 'sal_psu',
                    'air_temp_c', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa', 'rel_hum']
-    out_features = ['aac_coppml']
+    out_features = ['tetx_coppml', 'aac_coppml']
 
     _data_config = OrderedDict()
     batch_size = int(batch_size)
@@ -83,7 +83,7 @@ model = Model(data_config=data_config,
 
 model.build_nn()
 saved_epochs, losses = model.train_nn()
-errors, neg_predictions = model.predict()
+# errors, neg_predictions = model.predict()
 
 # # to load and run checkpoints comment above two lines and uncomment following code
 # path = "D:\\dl_jiyi\\models\\20200605_0954"

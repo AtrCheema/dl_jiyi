@@ -726,8 +726,8 @@ def generate_event_based_batches(data, batch_size, args, predef_intervals, verbo
 def generate_sample_based_batches(args, batch_size, data, intervals,
                                   verbosity=1):
 
-    if args['out_features'] > 1:
-        raise NotImplementedError
+    # if args['out_features'] > 1:
+    #     raise NotImplementedError
 
     args = deepcopy(args)
 
@@ -741,7 +741,7 @@ def generate_sample_based_batches(args, batch_size, data, intervals,
     def find_no_batches(total_samples, _generator, _gen_object):
 
         _batch, _y_batch = next(_generator)
-        first_idx = _y_batch[0, 1].astype(np.int64)
+        first_idx = _y_batch[0, args['out_features'] - 2].astype(np.int64)
         batch = None
 
         for batch in range(total_samples):
@@ -797,6 +797,13 @@ def generate_sample_based_batches(args, batch_size, data, intervals,
                 target_y = np.zeros(mask_y_batch[:, 0].shape)
                 target_y[to_keep_idx] = mask_y_batch[:, 0][to_keep_idx]
 
+                if args['out_features'] > 3:
+                    target_y = np.zeros((mask_y_batch.shape[0], args['out_features']-2))
+                    for x in range(args['out_features']-2):
+                        _target_y = np.zeros(mask_y_batch.shape[0])
+                        _target_y[to_keep_idx] = mask_y_batch[:, x][to_keep_idx]
+                        target_y[:, x] = _target_y
+
                 if np.sum(target_y) > 0.0:
                     no_of_batches_recalc += 1
 
@@ -819,7 +826,7 @@ def generate_sample_based_batches(args, batch_size, data, intervals,
     for i in range(no_of_batches_recalc):
 
         x_batches[i, :] = x_batches_list[i]
-        y_batches[i, :] = y_batches_list[i].reshape(-1, 1)
+        y_batches[i, :] = y_batches_list[i].reshape(batch_size, args['out_features']-2)
         index_batches = np.append(index_batches, dt_batches_list[i])  # dt_batches_list[i].reshape(-1, 1)
         tk_batches = np.append(tk_batches, tk_batches_list[i])
 

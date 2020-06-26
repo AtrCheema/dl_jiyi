@@ -114,7 +114,7 @@ class LeakyDense2D(Dense):
             # outputs_d = {}
             # for dim in range(outputs.get_shape()[1]):
 
-            outputs_1d = tf.reshape(outputs, [-1, ], name='outputs_1d_')
+            outputs_1d = tf.reshape(tf.transpose(outputs), [-1, ], name='outputs_1d_')
 
             # mask_array = self.mask_array['key_' + str(dim)]
             if self.verbose > 0:
