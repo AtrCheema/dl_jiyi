@@ -338,7 +338,10 @@ class Model(nn, ModelAttr):
             for f in files:
                 fname = os.path.join(fpath, 'checkpoints.ckpt-' + str(epoch) + f)
                 if os.path.exists(fname):
-                    os.remove(fname)
+                    try:
+                        os.remove(fname)
+                    except:
+                        pass
 
     def print_samples(self, mode='train', data_type='y'):
 
