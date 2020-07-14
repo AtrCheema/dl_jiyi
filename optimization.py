@@ -15,7 +15,7 @@ def objective_func(batch_size, lookback, lr, lstm_units, lstm_act='relu',
                    cnn_act='relu',
                    filters=64):
 
-    n_epochs = 10000
+    n_epochs = 5000
 
     data_config, nn_config, args, intervals, verbosity = make_model(int(batch_size),
                                                                     int(lookback),

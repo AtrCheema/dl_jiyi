@@ -80,19 +80,18 @@ class NeuralNetwork(NNAttr):
         self.mask_ph = tf.compat.v1.placeholder(tf.float32, [None, 1], name='mask_ph')  # self.nn_config['batch_size']
 
         # Add main LSTM to the graph
-        leaky_dense_inputs = self.add_lstm(self.x_ph)
+        lstm_outputs = self.add_lstm(self.x_ph)
 
         # 1D Convolution from outputs of LSTM but outputs are used from each previous steps i.e. return sequence
         # in upper LSTM is true
-
-        leaky_dense_inputs = self.add_1dcnn(leaky_dense_inputs)
+        cnn_1d_outputs = self.add_1dcnn(lstm_outputs)
 
         if self.verbose > 0:
-            print(leaky_dense_inputs.shape, "dynamic_rnn/RNN outputs shape", leaky_dense_inputs.get_shape())
+            print(cnn_1d_outputs.shape, "dynamic_rnn/RNN outputs shape", cnn_1d_outputs.get_shape())
 
         leaky_layer = LeakyDense2D(units=self.outs, activation=tf.nn.elu, leaky_inputs=True,
                                    mask_array=self.mask_ph, verbose=self.verbose)  # tf.nn.elu
-        dense_outputs = leaky_layer(leaky_dense_inputs)
+        dense_outputs = leaky_layer(cnn_1d_outputs)
 
         self.nn_config['dense_activation'] = leaky_layer.activation.__name__
 
@@ -123,6 +122,19 @@ class NeuralNetwork(NNAttr):
 
         self.training_op = optimizer.minimize(self.loss)
         self.saver = tf.compat.v1.train.Saver(max_to_keep=self.nn_config['n_epochs'])
+
+        grads_and_vars = optimizer.compute_gradients(self.loss)
+
+        if self.nn_config['tensorboard']:
+            # Gradient norm summary
+            for g, v in grads_and_vars:
+                with tf.name_scope('gradients'):
+                    tf_last_grad_norm = tf.sqrt(tf.reduce_mean(g**2))
+                    self.tf_gradnorm_smmary = tf.summary.scalar('grad_norm', tf_last_grad_norm)
+
+            self.tb_loss = tf.summary.scalar('tb_loss', self.loss)
+            self.lstm_outs = tf.summary.histogram('lstm_outs', lstm_outputs)
+            self.cnn_outs = tf.summary.histogram('cnn_outs', cnn_1d_outputs)
 
     def add_lstm(self, inputs):
 
@@ -236,10 +248,14 @@ class NeuralNetwork(NNAttr):
 
                     y_of_interest = mask_y_batch[np.where(mask_y_batch > 0.0)].reshape(-1, 1)
 
-                    _, mse, y_pred = sess.run([self.training_op, self.loss, self.full_outputs],
+                    _, mse, y_pred, gn_summ, lstm_outs, cnn_outs = sess.run([self.training_op, self.loss, self.full_outputs,
+                                                                             self.tf_gradnorm_smmary, self.lstm_outs, self.cnn_outs],
                                               feed_dict={self.x_ph: x_batch, self.obs_y_ph: y_of_interest,
                                                          self.mask_ph: mask_y_batch})
 
+                    writer.add_summary(gn_summ, epoch)
+                    writer.add_summary(lstm_outs, epoch)
+                    writer.add_summary(cnn_outs, epoch)
                     # because loss was calculated by flattening all output arrays, so we are calculating loss
                     # here like this
                     # cons: we can not find out individual loss for each observation/target array
@@ -292,8 +308,11 @@ class NeuralNetwork(NNAttr):
                                                     ps, save_fg, to_save)
 
                 if save_fg:
-                    self.saver.save(sess, save_path=os.path.join(self.cp_dir, 'checkpoints.ckpt'),
+                    try:
+                        self.saver.save(sess, save_path=os.path.join(self.cp_dir, 'checkpoints.ckpt'),
                                     global_step=epoch)
+                    except:
+                        print('access denied errro')
 
                 print(epoch, ps)
 
