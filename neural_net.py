@@ -7,6 +7,7 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.python.ops.rnn import dynamic_rnn
 from TSErrors import FindErrors
+import h5py
 
 from utils import check_min_loss
 from utils import AttributeNotSetYet
@@ -80,18 +81,18 @@ class NeuralNetwork(NNAttr):
         self.mask_ph = tf.compat.v1.placeholder(tf.float32, [None, 1], name='mask_ph')  # self.nn_config['batch_size']
 
         # Add main LSTM to the graph
-        lstm_outputs = self.add_lstm(self.x_ph)
+        self.lstm_outputs = self.add_lstm(self.x_ph)
 
         # 1D Convolution from outputs of LSTM but outputs are used from each previous steps i.e. return sequence
         # in upper LSTM is true
-        cnn_1d_outputs = self.add_1dcnn(lstm_outputs)
+        self.cnn_1d_outputs = self.add_1dcnn(self.lstm_outputs)
 
         if self.verbose > 0:
-            print(cnn_1d_outputs.shape, "dynamic_rnn/RNN outputs shape", cnn_1d_outputs.get_shape())
+            print(self.cnn_1d_outputs.shape, "dynamic_rnn/RNN outputs shape", self.cnn_1d_outputs.get_shape())
 
         leaky_layer = LeakyDense2D(units=self.outs, activation=tf.nn.elu, leaky_inputs=True,
                                    mask_array=self.mask_ph, verbose=self.verbose)  # tf.nn.elu
-        dense_outputs = leaky_layer(cnn_1d_outputs)
+        dense_outputs = leaky_layer(self.cnn_1d_outputs)
 
         self.nn_config['dense_activation'] = leaky_layer.activation.__name__
 
@@ -131,10 +132,11 @@ class NeuralNetwork(NNAttr):
                 with tf.name_scope('gradients'):
                     tf_last_grad_norm = tf.sqrt(tf.reduce_mean(g**2))
                     self.tf_gradnorm_smmary = tf.summary.scalar('grad_norm', tf_last_grad_norm)
+                    break
 
             self.tb_loss = tf.summary.scalar('tb_loss', self.loss)
-            self.lstm_outs = tf.summary.histogram('lstm_outs', lstm_outputs)
-            self.cnn_outs = tf.summary.histogram('cnn_outs', cnn_1d_outputs)
+            self.lstm_outs = tf.summary.histogram('lstm_outs', self.lstm_outputs)
+            self.cnn_outs = tf.summary.histogram('cnn_outs', self.cnn_1d_outputs)
 
     def add_lstm(self, inputs):
 
@@ -152,7 +154,7 @@ class NeuralNetwork(NNAttr):
                 lstm_outputs = tf.reshape(rnn_outputs1[:, -1, :], [-1, lstm_conf['lstm_units']])
 
             elif lstm_conf['method'] == 'keras_lstm_layer':
-                lstm_outputs = LSTM(lstm_conf['lstm_units'],
+                lstm_outputs = LSTM(lstm_conf['lstm_units'], name="first_lstm",
                                     activation=activation,
                                     input_shape=(self.data_config['lookback'], self.ins),
                                     return_sequences=return_seq)(inputs)
@@ -244,18 +246,27 @@ class NeuralNetwork(NNAttr):
                     x_batch, mask_y_batch = train_x[bat], train_y[bat]
 
                     # original mask_y_batch can contain have >1 second dimensions but we flatten it into 1D
-                    mask_y_batch = mask_y_batch.transpose().reshape(-1, 1)  # mask_y_batch will be used to slice dense layer outputs
+                    # mask_y_batch will be used to slice dense layer outputs
+                    mask_y_batch = mask_y_batch.transpose().reshape(-1, 1)
 
                     y_of_interest = mask_y_batch[np.where(mask_y_batch > 0.0)].reshape(-1, 1)
 
-                    _, mse, y_pred, gn_summ, lstm_outs, cnn_outs = sess.run([self.training_op, self.loss, self.full_outputs,
-                                                                             self.tf_gradnorm_smmary, self.lstm_outs, self.cnn_outs],
-                                              feed_dict={self.x_ph: x_batch, self.obs_y_ph: y_of_interest,
-                                                         self.mask_ph: mask_y_batch})
+                    if self.nn_config['tensorboard']:
+                        _, mse, y_pred, gn_summ, lstm_outs, cnn_outs = sess.run([self.training_op,
+                                                                                 self.loss,
+                                                                                 self.full_outputs,
+                                                                                 self.tf_gradnorm_smmary,
+                                                                                 self.lstm_outs,
+                                                                                 self.cnn_outs],
+                            feed_dict={self.x_ph: x_batch, self.obs_y_ph: y_of_interest, self.mask_ph: mask_y_batch})
+                        writer.add_summary(gn_summ, epoch)
+                        writer.add_summary(lstm_outs, epoch)
+                        writer.add_summary(cnn_outs, epoch)
+                    else:
+                        _, mse, y_pred = sess.run([self.training_op, self.loss, self.full_outputs],
+                                                  feed_dict={self.x_ph: x_batch, self.obs_y_ph: y_of_interest,
+                                                             self.mask_ph: mask_y_batch})
 
-                    writer.add_summary(gn_summ, epoch)
-                    writer.add_summary(lstm_outs, epoch)
-                    writer.add_summary(cnn_outs, epoch)
                     # because loss was calculated by flattening all output arrays, so we are calculating loss
                     # here like this
                     # cons: we can not find out individual loss for each observation/target array
@@ -355,12 +366,17 @@ class NeuralNetwork(NNAttr):
 
             y_pred = np.full((iterations * self.nn_config['batch_size'], self.outs), np.nan)
             y_true = np.full((iterations * self.nn_config['batch_size'], self.outs), np.nan)
+            lstm_outputs = np.full((iterations * self.nn_config['batch_size'], self.data_config['lookback'],
+                                     self.nn_config['lstm_conf']['lstm_units']), np.nan)
+            cnn_outputs = np.full((iterations * self.nn_config['batch_size'], self.nn_config['1dCNN']['filters']*3),
+                                   np.nan)
+
             st = 0
             en = self.nn_config['batch_size']
             for i in range(iterations):
                 test_x_batch, y_batch = x_batches[i], y_batches[i]
 
-                _y_pred = sess.run(self.full_outputs,
+                _y_pred, _lstm_outputs, _cnn_outputs = sess.run([self.full_outputs, self.lstm_outputs, self.cnn_1d_outputs],
                                    feed_dict={self.x_ph: test_x_batch, self.mask_ph: y_batch.reshape(-1, 1)})
 
                 if self.data_config['normalize']:
@@ -370,6 +386,9 @@ class NeuralNetwork(NNAttr):
 
                 y_pred[st:en, :] = _y_pred.reshape(-1, self.outs)
                 y_true[st:en, :] = y_batch.reshape(-1, self.outs)
+
+                lstm_outputs[st:en, :] = _lstm_outputs
+                cnn_outputs[st:en, :] = _cnn_outputs
 
                 for idx, dat in enumerate(self.data_config['in_features']):  # range(self.nn_config['input_features']):
                     value = test_x_batch[:, -1, idx].reshape(-1, 1)
@@ -383,4 +402,10 @@ class NeuralNetwork(NNAttr):
                 st += self.nn_config['batch_size']
                 en += self.nn_config['batch_size']
 
-        return x_data, y_pred, y_true
+        fpath = os.path.join(self.path, "lstm_outputs.h5")
+        hf = h5py.File(fpath, 'w')
+        hf.create_dataset('lstm_outputs', data=lstm_outputs)
+        hf.create_dataset('cnn_outputs', data=cnn_outputs)
+        hf.close()
+
+        return x_data, y_pred, y_true, lstm_outputs, cnn_outputs
