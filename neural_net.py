@@ -408,4 +408,4 @@ class NeuralNetwork(NNAttr):
         hf.create_dataset('cnn_outputs', data=cnn_outputs)
         hf.close()
 
-        return x_data, y_pred, y_true, lstm_outputs, cnn_outputs
+        return x_data, y_pred, y_true
